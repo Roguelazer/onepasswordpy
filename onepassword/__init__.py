@@ -1,3 +1,5 @@
+from .keychain import Keychain
+
 version_info = (0, 0, 1)
 
 __author__ = 'James Brown <jbrown@yelp.com>'
