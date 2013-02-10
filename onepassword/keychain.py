@@ -1,67 +1,12 @@
-import base64
-import hashlib
+import glob
 import os.path
 
-import Crypto.Cipher.AES
-import pbkdf2
 import simplejson
-import ssl
 
+from . import crypt_util
+from .item import Item
 
 EXPECTED_VERSION = 30645
-
-
-class BadKeyError(Exception):
-    pass
-
-
-def _decrypt_key(key_obj, password):
-    data = base64.b64decode(key_obj['data'])
-    salt = '\x00'*8
-    if data[:8] == 'Salted__':
-        salt = data[8:16]
-        data = data[16:]
-    iterations = max(int(key_obj.get('iterations', 1000)), 1000)
-    pb_gen = pbkdf2.PBKDF2(password, salt, iterations)
-    key = pb_gen.read(16)
-    iv = pb_gen.read(16)
-    aes_er = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
-    potential_key = aes_er.decrypt(data)
-    validation = base64.b64decode(key_obj['validation'])
-    decrypted_validation = _decrypt_item(validation, potential_key)
-    if decrypted_validation != potential_key:
-        print "Potential key: %r" % potential_key
-        print "Validation: %r" % decrypted_validation
-        raise BadKeyError("Validation did not match")
-    return key_obj, potential_key
-
-
-def _openssl_kdf(key, salt):
-    # TODO: Call m2crypto's EVP_BytesToKey instead
-    rounds = 2
-    hashes = []
-    ks = key + salt
-    result = bytes()
-    hashes.append(hashlib.md5(ks).digest())
-    for i in range(rounds):
-        tohash = ks if i == 0 else (hashes[i-1] + ks)
-        this_hash = hashlib.md5(tohash).digest()
-        hashes.append(this_hash)
-        result += this_hash
-    print len(result[:-16]), len(result[-16:])
-    return result[:-16], result[-16:]
-
-
-def _decrypt_item(data, key):
-    if data[:8] == 'Salted__':
-        salt = data[8:16]
-        data = data[16:]
-        nkey, iv = _openssl_kdf(key, salt)
-    else:
-        nkey = hashlib.md5(key)
-        iv = '\x00'*8
-    aes_er = Crypto.Cipher.AES.new(nkey, Crypto.Cipher.AES.MODE_CBC, iv)
-    return aes_er.decrypt(data)
 
 
 class Keychain(object):
@@ -81,7 +26,12 @@ class Keychain(object):
         if version_num != EXPECTED_VERSION:
             raise ValueError("I only understand 1Password build %s" % EXPECTED_VERSION)
 
-    def load_keys(self, password):
+    def unlock(self, password):
+        keys = self._load_keys(password)
+        self._load_items(keys)
+
+    def _load_keys(self, password):
+        self.keys = {}
         keys_file = os.path.join(self.base_path, 'data', 'default', 'encryptionKeys.js')
         with open(keys_file, 'r') as f:
             data = simplejson.load(f)
@@ -90,5 +40,17 @@ class Keychain(object):
             keys = [k for k in data['list'] if k.get('identifier') == identifier]
             assert len(keys) == 1, "There should be exactly one key for level %s, got %d" % (level, len(keysS))
             key = keys[0]
-            decrypted = _decrypt_key(key, password)
+            self.keys[identifier] = crypt_util.decrypt_key(key, password)
+        self.levels = levels
 
+    def _load_items(self, keys):
+        items = []
+        for f in glob.glob(os.path.join(self.base_path, 'data', 'default', '*.1password')):
+            items.append(Item.new_from_file(f, self))
+        self.items = items
+
+    def decrypt(self, keyid, string):
+        if keyid not in self.keys:
+            raise ValueError("Item encrypted with unknown key %s" % keyid)
+        # pad the input with NUL bytes to be a multiple of 16 bytes long
+        return crypt_util.decrypt_item(crypt_util.pad(string), self.keys[keyid])
