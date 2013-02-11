@@ -7,6 +7,7 @@ import Crypto.Cipher.AES
 import pbkdf2
 
 from . import padding
+from . import pbkdf1
 
 
 # 8 bytes for "opdata1"
@@ -74,38 +75,13 @@ def unhexize(hex_string):
     return ''.join(chr(i) for i in res)
 
 
-def pbkdf1(key, salt=None, key_size=16, rounds=2, hash_algo=hashlib.md5, count=1):
-    """Reimplement the simple PKCS#5 v1.5 key derivation function from OpenSSL
-    
-    (as in `openssl enc`). Technically, this is only PBKDF1 if the key size is 
-    20 bytes or less. But whatever.
-    """
-    # TODO: Call openssl's EVP_BytesToKey instead of reimplementing by hand
-    # (through m2crypto?)
-    if salt is None:
-        salt = '\x00'*(key_size/2)
-    ks = key + salt
-    d = ['']
-    result = bytes()
-    i = 1
-    while len(result) < 2*key_size:
-        tohash = d[i-1] + ks
-        # man page for BytesTo
-        for hash_application in range(count):
-            tohash = hash_algo(tohash).digest()
-        d.append(tohash)
-        result = ''.join(d)
-        i += 1
-    return result[:-key_size], result[-key_size:]
-
-
 def a_decrypt_item(data, key, aes_size=A_AES_SIZE):
     key_size = KEY_SIZE[aes_size]
     if data[:len(SALT_MARKER)] == SALT_MARKER:
         salt = data[len(SALT_MARKER):len(SALT_MARKER) + SALT_SIZE]
         data = data[len(SALT_MARKER) + SALT_SIZE:]
         kdf_rounds = KDF_ROUNDS_BY_SIZE[aes_size]
-        nkey, iv = pbkdf1(key, salt, key_size=key_size, rounds=kdf_rounds)
+        pb_gen = pbkdf1.PBKDF1(key, salt, rounds=kdf_rounds)
     else:
         nkey = hashlib.md5(key).digest()
         iv = '\x00'*key_size
