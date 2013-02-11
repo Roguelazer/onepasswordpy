@@ -4,23 +4,6 @@ import testify as T
 from onepassword import crypt_util
 
 
-class PaddingTestCase(T.TestCase):
-    """Test our PKCS#5 padding"""
-    VECTORS = (
-        ("", 1, "\x01"),
-        ("abcd", 8, "abcd\x04\x04\x04\x04"),
-        ("abcdefg\x00", 16, "abcdefg\x00\x08\x08\x08\x08\x08\x08\x08\x08"),
-    )
-    def test_pad(self):
-        for unpadded, bs, padded in self.VECTORS:
-            T.assert_equal(crypt_util.pad(unpadded, bs), padded)
-
-    def test_unpad(self):
-        for unpadded, _, padded in self.VECTORS:
-            T.assert_equal(crypt_util.unpad(padded), unpadded)
-        T.assert_equal(crypt_util.unpad(""), "")
-
-
 class HexizeTestCase(T.TestCase):
     VECTORS = (
         ('', ''),

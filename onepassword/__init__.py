@@ -1,4 +1,4 @@
-from .keychain import Keychain
+from . import keychain
 
 version_info = (0, 0, 2)
 

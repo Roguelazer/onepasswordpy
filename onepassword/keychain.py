@@ -4,12 +4,24 @@ import os.path
 import simplejson
 
 from . import crypt_util
+from . import padding
 from .item import Item
 
 EXPECTED_VERSION = 30645
 
 
-class Keychain(object):
+class AbstractKeychain(object):
+    """Implementation of common keychain logic (MP design, etc)."""
+    def check_version(self):
+        version_file = os.path.join(self.base_path, 'config', 'buildnum')
+        with open(version_file, 'r') as f:
+            version_num = int(f.read().strip())
+        if version_num != EXPECTED_VERSION:
+            raise ValueError("I only understand 1Password build %s" % EXPECTED_VERSION)
+
+
+class AKeychain(AbstractKeychain):
+    """Implementation of the classic .agilekeychain storage format"""
     def __init__(self, path):
         self._open(path)
 
@@ -18,13 +30,6 @@ class Keychain(object):
         if not(os.path.exists(self.base_path)):
             raise ValueError("Proported 1Password key file %s does not exist" % self.base_path)
         self.check_version()
-
-    def check_version(self):
-        version_file = os.path.join(self.base_path, 'config', 'buildnum')
-        with open(version_file, 'r') as f:
-            version_num = int(f.read().strip())
-        if version_num != EXPECTED_VERSION:
-            raise ValueError("I only understand 1Password build %s" % EXPECTED_VERSION)
 
     def unlock(self, password):
         keys = self._load_keys(password)
@@ -40,7 +45,7 @@ class Keychain(object):
             keys = [k for k in data['list'] if k.get('identifier') == identifier]
             assert len(keys) == 1, "There should be exactly one key for level %s, got %d" % (level, len(keysS))
             key = keys[0]
-            self.keys[identifier] = crypt_util.decrypt_key(key, password)
+            self.keys[identifier] = crypt_util.a_decrypt_key(key, password)
         self.levels = levels
 
     def _load_items(self, keys):
@@ -52,5 +57,12 @@ class Keychain(object):
     def decrypt(self, keyid, string):
         if keyid not in self.keys:
             raise ValueError("Item encrypted with unknown key %s" % keyid)
-        # pad the input with NUL bytes to be a multiple of 16 bytes long
-        return crypt_util.decrypt_item(crypt_util.pad(string), self.keys[keyid])
+        return crypt_util.a_decrypt_item(padding.pkcs5_pad(string), self.keys[keyid])
+
+
+class CKeychain(AbstractKeychain):
+    """Implementation of the modern .cloudkeychain format
+
+    Documentation at http://learn.agilebits.com/1Password4/Security/keychain-design.html
+    """
+    pass
