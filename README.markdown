@@ -18,6 +18,11 @@ This project depends on the following upstream libraries:
 
 This is a human-readable denormalized list; for the actual list, look at `setup.py`.
 
+Unit tests are written using Yelp's
+[testify](https://github.com/Yelp/testify) framework; you should install it
+(with yum, apt-get, pip, or whatever else suits your fancy) and run `testify
+tests` to run the tests.
+
 It also probably only runs on Python 2.6 and 2.7.
 
 License

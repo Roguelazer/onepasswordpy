@@ -27,6 +27,9 @@ setup(
         'pycrypto>=2.0',
         'pbkdf2>=1.3',
     ],
+    tests_require=[
+        'testify>=0.3',
+    ],
     packages=[
         'onepassword',
     ],
