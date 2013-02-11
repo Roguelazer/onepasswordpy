@@ -29,6 +29,7 @@ setup(
     ],
     tests_require=[
         'testify>=0.3',
+        'mock>=1.0',
     ],
     packages=[
         'onepassword',
