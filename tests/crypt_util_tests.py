@@ -1,3 +1,4 @@
+import mock
 import testify as T
 
 from onepassword import crypt_util
@@ -54,6 +55,24 @@ class PBKDF1TestCase(T.TestCase):
             hex_derived_iv = crypt_util.hexize(derived_iv)
             T.assert_equal(hex_derived_key, expected_key)
             T.assert_equal(hex_derived_iv, expected_iv)
+
+    def test_count(self):
+        # can't use vectors as easily here because openssl never passes
+        # count != 1
+        sigil = "SENTINTEL VALUE THAT IS A STRING"
+        mock_hash = mock.Mock()
+        mock_hash.digest = mock.Mock(return_value=sigil)
+        mock_md5 = mock.Mock(return_value=mock_hash)
+        # choose parameters so that key + salt is already desired length
+        key = 'a'*8
+        salt = 'b'*8
+        T.assert_equal(crypt_util.pbkdf1(key, salt, key_size=16, count=4, hash_algo=mock_md5), (sigil[:-16], sigil[-16:]))
+        T.assert_equal(mock_md5.mock_calls, [
+            mock.call(key+salt),
+            mock.call(sigil),
+            mock.call(sigil),
+            mock.call(sigil),
+        ])
 
 
 if __name__ == '__main__':
