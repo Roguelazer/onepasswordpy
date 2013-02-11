@@ -5,3 +5,4 @@
  * py3 support (just more bytes()?)
  * item creation
  * unit tests
+ * `.cloudkeychain` support

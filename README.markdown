@@ -1,7 +1,8 @@
 **onepasswordpy** is a pure-python library for manipulating
 [1Password](https://agilebits.com/onepassword)'s `.agilekeychain` files.
 Right now, it supports decrypting and loading all data types. Creation of
-new items will come in a future release. See `TODO.markdown` for other
+new items will come in a future release. It will also support
+`.cloudkeychain` files in a future release. See `TODO.markdown` for other
 things that might come in future releases.
 
 *IMPORTANT NOTE*: I am not in any way affiliated with AgileBits, the makers
