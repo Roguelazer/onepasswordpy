@@ -7,6 +7,7 @@ import struct
 import Crypto.Cipher.AES
 import Crypto.Hash.HMAC
 import Crypto.Hash.MD5
+import Crypto.Hash.SHA256
 import Crypto.Hash.SHA512
 import Crypto.Protocol.KDF
 import pbkdf2
@@ -93,32 +94,34 @@ def a_decrypt_item(data, key, aes_size=A_AES_SIZE):
 def opdata1_unpack(data):
     if data[:8] != "opdata01":
         data = base64.b64decode(data)
-    assert data[:8] == "opdata01", "expected opdata1 format message"
-    plaintext_length = struct.unpack("<Q", data[8:16])
+    if data[:8] != "opdata01":
+        raise TypeError("expected opdata1 format message")
+    plaintext_length = int(struct.unpack("<Q", data[8:16])[0])
     iv = data[16:32]
     cryptext = data[32:-32]
-    hmacd_data = data[16:-32]
     expected_hmac = data[-32:]
-    return plaintext_length, iv, cryptext, expected_hmac, hmacd_data
+    return plaintext_length, iv, cryptext, expected_hmac
 
 
 def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE):
     key_size = KEY_SIZE[aes_size]
     assert len(key) == key_size
     assert len(data) >= OPDATA1_MINIMUM_SIZE
-    plaintext_length, iv, cryptext, expected_hmac, hmacd_data = opdata1_unpack(data)
-    verifier = hmac.new(key=hmac_key, digestmod=hashlib.sha256, msg=hmacd_data)
+    plaintext_length, iv, cryptext, expected_hmac = opdata1_unpack(data)
+    message_to_hmac = cryptext
+    verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=message_to_hmac, digestmod=Crypto.Hash.SHA256)
     if verifier.digest() != expected_hmac:
         raise ValueError("HMAC did not match for opdata1 record")
     decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
-    return padding.ab_unpad(decryptor.decrypt(data), plaintext_length)
+    decrypted = decryptor.decrypt(cryptext)
+    unpadded = padding.ab_unpad(decrypted, plaintext_length)
+    return unpadded
+
 
 def opdata1_derive_keys(password, salt, iterations=1000, aes_size=C_AES_SIZE):
     """Key derivation function for .cloudkeychain files"""
     key_size = KEY_SIZE[aes_size]
-    #p_gen = pbkdf2.PBKDF2(passphrase=password, salt=salt, digestmodule=Crypto.Hash.SHA512, iterations=iterations)
-    def prf(p, s):
-        return Crypto.Hash.HMAC.new(p, s, digestmod=Crypto.Hash.SHA512).digest()
+    prf = lambda p,s: Crypto.Hash.HMAC.new(p, s, digestmod=Crypto.Hash.SHA512).digest()
     keys = Crypto.Protocol.KDF.PBKDF2(password=password, salt=salt, dkLen=2*key_size, count=iterations, prf=prf)
     key1 = keys[:key_size]
     key2 = keys[key_size:]
