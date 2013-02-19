@@ -35,7 +35,7 @@ class AKeychain(AbstractKeychain):
     def check_paths(self):
         super(AKeychain, self).check_paths()
         files_to_check = {
-            'version file': os.path.join(self.base_path, 'config', 'build_num'),
+            'version file': os.path.join(self.base_path, 'config', 'buildnum'),
             'keys': os.path.join(self.base_path, 'data', 'default', 'encryptionKeys.js')
         }
         for descriptor, expected_path in files_to_check.iteritems():

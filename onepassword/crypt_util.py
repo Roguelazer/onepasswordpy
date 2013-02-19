@@ -30,11 +30,6 @@ KEY_SIZE = {
     192: 24,
     256: 32,
 }
-KDF_ROUNDS_BY_SIZE = {
-    128: 2,
-    192: 2,
-    256: 3,
-}
 
 SALT_SIZE = 8
 SALT_MARKER = 'Salted__'
@@ -77,38 +72,14 @@ def unhexize(hex_string):
     return ''.join(chr(i) for i in res)
 
 
-def pbkdf1(key, salt=None, key_size=16, rounds=2, hash_algo=Crypto.Hash.MD5, count=1):
-    """Reimplement the simple PKCS#5 v1.5 key derivation function from OpenSSL
-    
-    (as in `openssl enc`). Technically, this is only PBKDF1 if the key size is 
-    20 bytes or less. But whatever.
-    """
-    # TODO: Call openssl's EVP_BytesToKey instead of reimplementing by hand
-    # (through m2crypto?)
-    if salt is None:
-        salt = '\x00'*(key_size/2)
-    ks = key + salt
-    d = ['']
-    result = bytes()
-    i = 1
-    while len(result) < 2*key_size:
-        tohash = d[i-1] + ks
-        # man page for BytesTo
-        for hash_application in range(count):
-            tohash = hash_algo.new(tohash).digest()
-        d.append(tohash)
-        result = ''.join(d)
-        i += 1
-    return result[:-key_size], result[-key_size:]
-
-
 def a_decrypt_item(data, key, aes_size=A_AES_SIZE):
     key_size = KEY_SIZE[aes_size]
     if data[:len(SALT_MARKER)] == SALT_MARKER:
         salt = data[len(SALT_MARKER):len(SALT_MARKER) + SALT_SIZE]
         data = data[len(SALT_MARKER) + SALT_SIZE:]
-        kdf_rounds = KDF_ROUNDS_BY_SIZE[aes_size]
-        pb_gen = pbkdf1.PBKDF1(key, salt, rounds=kdf_rounds)
+        pb_gen = pbkdf1.PBKDF1(key, salt)
+        nkey = pb_gen.read(key_size)
+        iv = pb_gen.read(key_size)
     else:
         nkey = Crypto.Hash.MD5.new(key).digest()
         iv = '\x00'*key_size
@@ -120,29 +91,27 @@ def opdata1_unpack(data):
     if data[:8] != "opdata01":
         data = base64.b64decode(data)
     assert data[:8] == "opdata01", "expected opdata1 format message"
-    data = data[8:]
-    plaintext_length = struct.unpack("<Q", data[:8])
-    iv = data[8:24]
-    cryptext = data[24:-32]
+    plaintext_length = struct.unpack("<Q", data[8:16])
+    iv = data[16:32]
+    cryptext = data[32:-32]
+    hmacd_data = data[16:-32]
     expected_hmac = data[-32:]
-    return plaintext_length, iv, cryptext, expected_hmac
+    return plaintext_length, iv, cryptext, expected_hmac, hmacd_data
 
 
 def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE):
     key_size = KEY_SIZE[aes_size]
     assert len(key) == key_size
     assert len(data) >= OPDATA1_MINIMUM_SIZE
-    plaintext_length, iv, cryptext, expected_hmac = opdata1_unpack(data)
-    verifier = hmac.new(key=hmac_key, digestmod=hashlib.sha256)
-    # TODO: put in "opdata1" and plantext_length or not?
-    verifier.update(iv)
-    verifier.update(cryptext)
+    plaintext_length, iv, cryptext, expected_hmac, hmacd_data = opdata1_unpack(data)
+    verifier = hmac.new(key=hmac_key, digestmod=hashlib.sha256, msg=hmacd_data)
     if verifier.digest() != expected_hmac:
         raise ValueError("HMAC did not match for opdata1 record")
     decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
     return padding.ab_unpad(decryptor.decrypt(data), plaintext_length)
 
 def opdata1_derive_keys(password, salt, iterations=1000, aes_size=C_AES_SIZE):
+    """Key derivation function for .cloudkeychain files"""
     key_size = KEY_SIZE[aes_size]
     p_gen = pbkdf2.PBKDF2(passphrase=password, salt=salt, digestmodule=Crypto.Hash.SHA512, iterations=iterations)
     key1 = p_gen.read(key_size)
