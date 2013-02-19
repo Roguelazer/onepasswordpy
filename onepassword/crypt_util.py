@@ -1,11 +1,14 @@
 import base64
+import functools
 import hashlib
 import hmac
 import struct
 
 import Crypto.Cipher.AES
+import Crypto.Hash.HMAC
 import Crypto.Hash.MD5
 import Crypto.Hash.SHA512
+import Crypto.Protocol.KDF
 import pbkdf2
 
 from . import padding
@@ -113,7 +116,10 @@ def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE):
 def opdata1_derive_keys(password, salt, iterations=1000, aes_size=C_AES_SIZE):
     """Key derivation function for .cloudkeychain files"""
     key_size = KEY_SIZE[aes_size]
-    p_gen = pbkdf2.PBKDF2(passphrase=password, salt=salt, digestmodule=Crypto.Hash.SHA512, iterations=iterations)
-    key1 = p_gen.read(key_size)
-    key2 = p_gen.read(key_size)
+    #p_gen = pbkdf2.PBKDF2(passphrase=password, salt=salt, digestmodule=Crypto.Hash.SHA512, iterations=iterations)
+    def prf(p, s):
+        return Crypto.Hash.HMAC.new(p, s, digestmod=Crypto.Hash.SHA512).digest()
+    keys = Crypto.Protocol.KDF.PBKDF2(password=password, salt=salt, dkLen=2*key_size, count=iterations, prf=prf)
+    key1 = keys[:key_size]
+    key2 = keys[key_size:]
     return key1, key2
