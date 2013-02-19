@@ -6,3 +6,4 @@
  * item creation
  * unit tests
  * `.cloudkeychain` support
+ * reimplement pbkdf2 in C, because the python PBKDF2 module is slow
