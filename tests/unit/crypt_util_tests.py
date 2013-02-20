@@ -32,7 +32,6 @@ class OPData1KeyDerivationTestCase(T.TestCase):
             (('fred', '', 1), ('v\x08\xb1\xd6\x9a\x16\xbe\x11\x8b\x7fa\x86\x99\xdc\xc9\xbd\xb2\xe5a\xf2wld,\xfa\xd6V\x16\x8bV\x88`', '\xad\x96\xd3\xe7S\x10\xa8L!\xf3\xa7\xb9w\xf0%2\x91\x94\xbb\xf0f\x00\x11\xcb\xa4\xaa\xf2\x8d\x81\x0fb\xa9')),
             (('fred', ''), ('P\x9b\xe2\xb9\xc0C"\xaf\xf2>\xc0zF\xe8\xff\x06j\x88\x91\xe3\t\x82\x96VZ0\x8e\xd6\x11\xcc\xa7\xd4', 'b$\x81(\xd4\xf4\x0e8M\xf0\x0c\x18)!r\xcf\x02>\xf3hK_\x95\xa4\x8c\xa0\x91\x9c\xf97 W')),
     )
-
     def test_vectors(self):
         for args, expected in self.VECTORS:
             T.assert_equal(crypt_util.opdata1_derive_keys(*args), expected)
@@ -72,10 +71,17 @@ class OPData1UnpackTestCase(T.TestCase):
 
 class OPdata1DecryptTestCase(T.TestCase):
     def test_specific(self):
-        key = '>P\xb9\xb4\xfe\x1b\x06\x02umR\x03tne\xefRJ"\x17\xb9\x83\x85\xc2\x10\x12\x92\x98\x99\x8c\xf6\xbf'
-        hmac_key = 'Cw\x1f\xa2\xb4\xa2\xc0%\xca,\xb2B{\xc5\xfb_\xf9FT\xbb\xb5\x8eX$\xb1\x85\xd1\xef\xfc\xdd\x80W'
+        key = '`\x8c\x9f\x19<p\xd5U\xec!Sx\xd6\xe8\x9b\xaf\xbc&:\x8f\x82T\xff\xfbZ\xae{LAf\xaaI'
+        hmac_key = '\xb9\xeaO\xdc\xeb\x8e<\xee68\xa8\xc0\x9b\xe1\xbdV\xf94\xf5g\x165\xca\x1a\n\x98Hl\x8bT2"'
         data = "b3BkYXRhMDFAAAAAAAAAAMggp7KPfHsgxuBvQ1mn3YPVxJ7Sc+gvnTCZXQMop2osF7qQUohQHXRTftuCriAAUYgmK6bytJVdIz5JIXCUZEq6xWFekj5L3Br6MO55+bPz1qei50DwFs27eh0+tjpSGm3dMcCqhMAqMmqkENbur0f5t73xlvAEkPwpZzWcrPKe"
-        crypt_util.opdata1_decrypt_item(data, key, hmac_key)
+        print repr(crypt_util.opdata1_decrypt_item(data, key, hmac_key))
+
+    def test_other(self):
+        keys = '0\x17gL\xf3\xc5)\x12\xbc\x832^\xdb\x04S\xfe\xb5Gj>R\xc2A|,\xc6\xe3\xc4W =i\x0e\x82\xd3\x1a\xb7\xd8\x84\x8e)\xfb69\xfe\xad/\xe5\xef\xd1\x8d\r\x91xP\xce\x94>c:\x1b\xa1)\x13'
+        key = keys[:32]
+        hmac_key = keys[32:]
+        data = "b3BkYXRhMDEuAAAAAAAAACCvfWbzwBJIcF501hFPJGgqwKPA+y333FXC2LG9W+M9GGIyd9wBW6DToRRV5964EkpEs4zlwz5FHNt25FfGuC2TPYnVl+zKLH0GFPXVvFYz3XP5COQ3fHhX2SmeHHsviw=="
+        print repr(crypt_util.opdata1_decrypt_item(data, key, hmac_key))
 
 
 if __name__ == '__main__':

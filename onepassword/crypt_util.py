@@ -1,7 +1,4 @@
 import base64
-import functools
-import hashlib
-import hmac
 import struct
 
 import Crypto.Cipher.AES
@@ -92,25 +89,27 @@ def a_decrypt_item(data, key, aes_size=A_AES_SIZE):
 
 
 def opdata1_unpack(data):
-    if data[:8] != "opdata01":
+    HEADER_LENGTH = 8
+    TOTAL_HEADER_LENGTH = 32
+    HMAC_LENGTH = 32
+    if data[:HEADER_LENGTH] != "opdata01":
         data = base64.b64decode(data)
-    if data[:8] != "opdata01":
+    if data[:HEADER_LENGTH] != "opdata01":
         raise TypeError("expected opdata1 format message")
-    plaintext_length = int(struct.unpack("<Q", data[8:16])[0])
-    iv = data[16:32]
-    cryptext = data[32:-32]
-    expected_hmac = data[-32:]
+    plaintext_length, iv = struct.unpack("<Q16s", data[HEADER_LENGTH:TOTAL_HEADER_LENGTH])
+    cryptext = data[TOTAL_HEADER_LENGTH:-HMAC_LENGTH]
+    expected_hmac = data[-HMAC_LENGTH:]
     return plaintext_length, iv, cryptext, expected_hmac
 
 
-def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE):
+def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
     key_size = KEY_SIZE[aes_size]
     assert len(key) == key_size
     assert len(data) >= OPDATA1_MINIMUM_SIZE
     plaintext_length, iv, cryptext, expected_hmac = opdata1_unpack(data)
     message_to_hmac = cryptext
     verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=message_to_hmac, digestmod=Crypto.Hash.SHA256)
-    if verifier.digest() != expected_hmac:
+    if not ignore_hmac and verifier.digest() != expected_hmac:
         raise ValueError("HMAC did not match for opdata1 record")
     decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
     decrypted = decryptor.decrypt(cryptext)
@@ -121,6 +120,10 @@ def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE):
 def opdata1_derive_keys(password, salt, iterations=1000, aes_size=C_AES_SIZE):
     """Key derivation function for .cloudkeychain files"""
     key_size = KEY_SIZE[aes_size]
+    password = password.encode('utf-8')
+    # TODO: is this necessary? does the hmac on ios actually include the
+    # trailing nul byte?
+    password += "\x00"
     prf = lambda p,s: Crypto.Hash.HMAC.new(p, s, digestmod=Crypto.Hash.SHA512).digest()
     keys = Crypto.Protocol.KDF.PBKDF2(password=password, salt=salt, dkLen=2*key_size, count=iterations, prf=prf)
     key1 = keys[:key_size]

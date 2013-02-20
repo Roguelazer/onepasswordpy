@@ -1,3 +1,4 @@
+import base64
 import glob
 import os.path
 
@@ -59,10 +60,10 @@ class AKeychain(AbstractKeychain):
         keys_file = os.path.join(self.base_path, 'data', 'default', 'encryptionKeys.js')
         with open(keys_file, 'r') as f:
             data = simplejson.load(f)
-        levels = dict((k, v) for (k, v) in data.iteritems() if k != 'list')
+        levels = dict((l, v) for (l, v) in data.iteritems() if l != 'list')
         for level, identifier in levels.iteritems():
             keys = [k for k in data['list'] if k.get('identifier') == identifier]
-            assert len(keys) == 1, "There should be exactly one key for level %s, got %d" % (level, len(keysS))
+            assert len(keys) == 1, "There should be exactly one key for level %s, got %d" % (level, len(keys))
             key = keys[0]
             self.keys[identifier] = crypt_util.a_decrypt_key(key, password)
         self.levels = levels
@@ -104,7 +105,11 @@ class CKeychain(AbstractKeychain):
         with open(os.path.join(self.base_path, 'default', 'profile.js'), 'r') as f:
             ds = f.read()[self.INITIAL_KEY_OFFSET:-1]
             data = simplejson.loads(ds)
-        super_master_key, hmac_key = crypt_util.opdata1_derive_keys(password, data['salt'], iterations=int(data['iterations']))
-        master_key = crypt_util.opdata1_decrypt_item(data['masterKey'], super_master_key, hmac_key)
-        overview_key = crypt_util.opdata1_decrypt_item(data['overviewKey'], super_master_key, hmac_key)
+        super_master_key, super_hmac_key = crypt_util.opdata1_derive_keys(password, base64.b64decode(data['salt']), iterations=int(data['iterations']))
+        master_keys = crypt_util.opdata1_decrypt_item(base64.b64decode(data['masterKey']), super_master_key, super_hmac_key)
+        self.master_key = master_keys[:self.KEY_SIZE]
+        self.master_hmac = master_keys[self.KEY_SIZE:]
+        overview_keys = crypt_util.opdata1_decrypt_item(base64.b64decode(data['overviewKey']), super_master_key, super_hmac_key)
+        self.overview_key = overview_keys[:self.KEY_SIZE]
+        self.overview_hmac = overview_keys[self.KEY_SIZE:]
 
