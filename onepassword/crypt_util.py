@@ -102,6 +102,26 @@ def opdata1_unpack(data):
     return plaintext_length, iv, cryptext, expected_hmac
 
 
+def opdata1_decrypt_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
+    """Decrypt encrypted item keys"""
+    key_size = KEY_SIZE[aes_size]
+    iv, cryptext, expected_hmac = struct.unpack("=16s64s32s", data)
+    verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=cryptext, digestmod=Crypto.Hash.SHA256)
+    if not ignore_hmac and verifier.digest() != expected_hmac:
+        raise ValueError("HMAC did not match for opdata1 key")
+    decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
+    decrypted = decryptor.decrypt(cryptext)
+    crypto_key, mac_key = decrypted[:key_size], decrypted[key_size:]
+    return crypto_key, mac_key
+
+
+def opdata1_decrypt_master_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
+    key_size = KEY_SIZE[aes_size]
+    bare_key = opdata1_decrypt_item(data, key, hmac_key, aes_size=aes_size, ignore_hmac=ignore_hmac)
+    hashed_key = Crypto.Hash.SHA512(bare_key).digest()
+    return hashed_key[:key_size], hashed_key[key_size:]
+
+
 def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
     key_size = KEY_SIZE[aes_size]
     assert len(key) == key_size

@@ -106,9 +106,7 @@ class CKeychain(AbstractKeychain):
             ds = f.read()[self.INITIAL_KEY_OFFSET:-1]
             data = simplejson.loads(ds)
         super_master_key, super_hmac_key = crypt_util.opdata1_derive_keys(password, base64.b64decode(data['salt']), iterations=int(data['iterations']))
-        master_keys = crypt_util.opdata1_decrypt_item(base64.b64decode(data['masterKey']), super_master_key, super_hmac_key)
-        self.master_key = master_keys[:self.KEY_SIZE]
-        self.master_hmac = master_keys[self.KEY_SIZE:]
+        self.master_key, self.master_hmac = crypt_util.opdata1_decrypt_master_key(base64.b64decode(data['masterKey']), super_master_key, super_hmac_key)
         overview_keys = crypt_util.opdata1_decrypt_item(base64.b64decode(data['overviewKey']), super_master_key, super_hmac_key)
         self.overview_key = overview_keys[:self.KEY_SIZE]
         self.overview_hmac = overview_keys[self.KEY_SIZE:]
