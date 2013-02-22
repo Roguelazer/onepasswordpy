@@ -10,7 +10,9 @@ class PBKDF1(object):
     """
 
     # TODO: Call openssl's EVP_BytesToKey instead of reimplementing by hand
-    # (through m2crypto?)
+    # (through m2crypto?). Alternatively, figure out how to make PyCrypto's
+    # built-in PBKDF1 work without yelling at me that MD5 is an unacceptable
+    # hash algorithm
     def __init__(self, key, salt, hash_algo=hashlib.md5, iterations=1):
         if salt is None:
             salt = '\x00'*(key_size/2)
