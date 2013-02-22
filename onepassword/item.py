@@ -1,7 +1,7 @@
 import simplejson
 
 
-class Item(object):
+class AItem(object):
     def __init__(self, keychain):
         self.keychain = keychain
 

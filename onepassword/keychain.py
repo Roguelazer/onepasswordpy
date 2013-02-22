@@ -6,7 +6,7 @@ import simplejson
 
 from . import crypt_util
 from . import padding
-from .item import Item
+from .item import AItem
 
 EXPECTED_VERSION_MIN = 30000
 EXPECTED_VERSION_MAX = 40000
@@ -73,7 +73,7 @@ class AKeychain(AbstractKeychain):
     def _load_items(self, keys):
         items = []
         for f in glob.glob(os.path.join(self.base_path, 'data', 'default', '*.1password')):
-            items.append(Item.new_from_file(f, self))
+            items.append(AItem.new_from_file(f, self))
         self.items = items
 
     def decrypt(self, keyid, string):
@@ -109,7 +109,4 @@ class CKeychain(AbstractKeychain):
             data = simplejson.loads(ds)
         super_master_key, super_hmac_key = crypt_util.opdata1_derive_keys(password, base64.b64decode(data['salt']), iterations=int(data['iterations']))
         self.master_key, self.master_hmac = crypt_util.opdata1_decrypt_master_key(base64.b64decode(data['masterKey']), super_master_key, super_hmac_key)
-        overview_keys = crypt_util.opdata1_decrypt_item(base64.b64decode(data['overviewKey']), super_master_key, super_hmac_key)
-        self.overview_key = overview_keys[:self.KEY_SIZE]
-        self.overview_hmac = overview_keys[self.KEY_SIZE:]
-
+        self.overview_key, self.overview_hmac = crypt_util.opdata1_decrypt_master_key(base64.b64decode(data['overviewKey']), super_master_key, super_hmac_key)
