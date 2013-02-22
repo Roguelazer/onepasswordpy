@@ -1,9 +1,12 @@
 import base64
-import hashlib
-import hmac
 import struct
 
 import Crypto.Cipher.AES
+import Crypto.Hash.HMAC
+import Crypto.Hash.MD5
+import Crypto.Hash.SHA256
+import Crypto.Hash.SHA512
+import Crypto.Protocol.KDF
 import pbkdf2
 
 from . import padding
@@ -27,11 +30,6 @@ KEY_SIZE = {
     128: 16,
     192: 24,
     256: 32,
-}
-KDF_ROUNDS_BY_SIZE = {
-    128: 2,
-    192: 2,
-    256: 3,
 }
 
 SALT_SIZE = 8
@@ -80,30 +78,81 @@ def a_decrypt_item(data, key, aes_size=A_AES_SIZE):
     if data[:len(SALT_MARKER)] == SALT_MARKER:
         salt = data[len(SALT_MARKER):len(SALT_MARKER) + SALT_SIZE]
         data = data[len(SALT_MARKER) + SALT_SIZE:]
-        kdf_rounds = KDF_ROUNDS_BY_SIZE[aes_size]
-        pb_gen = pbkdf1.PBKDF1(key, salt, rounds=kdf_rounds)
+        pb_gen = pbkdf1.PBKDF1(key, salt)
+        nkey = pb_gen.read(key_size)
+        iv = pb_gen.read(key_size)
     else:
-        nkey = hashlib.md5(key).digest()
+        nkey = Crypto.Hash.MD5.new(key).digest()
         iv = '\x00'*key_size
     aes_er = Crypto.Cipher.AES.new(nkey, Crypto.Cipher.AES.MODE_CBC, iv)
     return padding.pkcs5_unpad(aes_er.decrypt(data))
 
 
-def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE):
+def opdata1_unpack(data):
+    HEADER_LENGTH = 8
+    TOTAL_HEADER_LENGTH = 32
+    HMAC_LENGTH = 32
+    if data[:HEADER_LENGTH] != "opdata01":
+        data = base64.b64decode(data)
+    if data[:HEADER_LENGTH] != "opdata01":
+        raise TypeError("expected opdata1 format message")
+    plaintext_length, iv = struct.unpack("<Q16s", data[HEADER_LENGTH:TOTAL_HEADER_LENGTH])
+    cryptext = data[TOTAL_HEADER_LENGTH:-HMAC_LENGTH]
+    expected_hmac = data[-HMAC_LENGTH:]
+    hmac_d_data = data[:-HMAC_LENGTH]
+    return plaintext_length, iv, cryptext, expected_hmac, hmac_d_data
+
+
+def opdata1_decrypt_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
+    """Decrypt encrypted item keys"""
+    key_size = KEY_SIZE[aes_size]
+    iv, cryptext, expected_hmac = struct.unpack("=16s64s32s", data)
+    if not ignore_hmac:
+        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=(iv + cryptext), digestmod=Crypto.Hash.SHA256)
+        if verifier.digest() != expected_hmac:
+            raise ValueError("HMAC did not match for opdata1 key")
+    decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
+    decrypted = decryptor.decrypt(cryptext)
+    crypto_key, mac_key = decrypted[:key_size], decrypted[key_size:]
+    return crypto_key, mac_key
+
+
+def opdata1_decrypt_master_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
+    key_size = KEY_SIZE[aes_size]
+    bare_key = opdata1_decrypt_item(data, key, hmac_key, aes_size=aes_size, ignore_hmac=ignore_hmac)
+    # XXX: got the following step from jeff@agilebits (as opposed to the
+    # docs anywhere)
+    hashed_key = Crypto.Hash.SHA512.new(bare_key).digest()
+    return hashed_key[:key_size], hashed_key[key_size:]
+
+
+def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
     key_size = KEY_SIZE[aes_size]
     assert len(key) == key_size
     assert len(data) >= OPDATA1_MINIMUM_SIZE
-    assert data[:8] == "opdata1", "expected opdata1 format message"
-    data = data[8:]
-    plaintext_length = struct.unpack("<Q", data[:8])
-    iv = data[8:24]
-    cryptext = data[24:-32]
-    expected_hmac = data[-32:]
-    verifier = hmac.new(key=hmac_key, digestmod=hashlib.sha256)
-    # TODO: put in "opdata1" and plantext_length or not?
-    verifier.update(iv)
-    verifier.update(cryptext)
-    if verifier.digest() != expected_hmac:
-        raise ValueError("HMAC did not match for opdata1 record")
+    plaintext_length, iv, cryptext, expected_hmac, hmac_d_data = opdata1_unpack(data)
+    if not ignore_hmac:
+        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=hmac_d_data, digestmod=Crypto.Hash.SHA256)
+        got_hmac = verifier.digest()
+        if len(got_hmac) != len(expected_hmac):
+            raise ValueError("Got unexpected HMAC length (expected %d bytes, got %d bytes)" % (len(expected_hmac), len(got_hmac)))
+        if got_hmac != expected_hmac:
+            raise ValueError("HMAC did not match for opdata1 record")
     decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
-    return padding.ab_unpad(decryptor.decrypt(data), plaintext_length)
+    decrypted = decryptor.decrypt(cryptext)
+    unpadded = padding.ab_unpad(decrypted, plaintext_length)
+    return unpadded
+
+
+def opdata1_derive_keys(password, salt, iterations=1000, aes_size=C_AES_SIZE):
+    """Key derivation function for .cloudkeychain files"""
+    key_size = KEY_SIZE[aes_size]
+    password = password.encode('utf-8')
+    # TODO: is this necessary? does the hmac on ios actually include the
+    # trailing nul byte?
+    password += "\x00"
+    prf = lambda p,s: Crypto.Hash.HMAC.new(p, s, digestmod=Crypto.Hash.SHA512).digest()
+    keys = Crypto.Protocol.KDF.PBKDF2(password=password, salt=salt, dkLen=2*key_size, count=iterations, prf=prf)
+    key1 = keys[:key_size]
+    key2 = keys[key_size:]
+    return key1, key2
