@@ -99,16 +99,18 @@ def opdata1_unpack(data):
     plaintext_length, iv = struct.unpack("<Q16s", data[HEADER_LENGTH:TOTAL_HEADER_LENGTH])
     cryptext = data[TOTAL_HEADER_LENGTH:-HMAC_LENGTH]
     expected_hmac = data[-HMAC_LENGTH:]
-    return plaintext_length, iv, cryptext, expected_hmac
+    hmac_d_data = data[:-HMAC_LENGTH]
+    return plaintext_length, iv, cryptext, expected_hmac, hmac_d_data
 
 
 def opdata1_decrypt_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
     """Decrypt encrypted item keys"""
     key_size = KEY_SIZE[aes_size]
     iv, cryptext, expected_hmac = struct.unpack("=16s64s32s", data)
-    verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=cryptext, digestmod=Crypto.Hash.SHA256)
-    if not ignore_hmac and verifier.digest() != expected_hmac:
-        raise ValueError("HMAC did not match for opdata1 key")
+    if not ignore_hmac:
+        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=(iv + cryptext), digestmod=Crypto.Hash.SHA256)
+        if verifier.digest() != expected_hmac:
+            raise ValueError("HMAC did not match for opdata1 key")
     decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
     decrypted = decryptor.decrypt(cryptext)
     crypto_key, mac_key = decrypted[:key_size], decrypted[key_size:]
@@ -118,6 +120,8 @@ def opdata1_decrypt_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=Fa
 def opdata1_decrypt_master_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
     key_size = KEY_SIZE[aes_size]
     bare_key = opdata1_decrypt_item(data, key, hmac_key, aes_size=aes_size, ignore_hmac=ignore_hmac)
+    # XXX: got the following step from jeff@agilebits (as opposed to the
+    # docs anywhere)
     hashed_key = Crypto.Hash.SHA512.new(bare_key).digest()
     return hashed_key[:key_size], hashed_key[key_size:]
 
@@ -126,14 +130,13 @@ def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=F
     key_size = KEY_SIZE[aes_size]
     assert len(key) == key_size
     assert len(data) >= OPDATA1_MINIMUM_SIZE
-    plaintext_length, iv, cryptext, expected_hmac = opdata1_unpack(data)
+    plaintext_length, iv, cryptext, expected_hmac, hmac_d_data = opdata1_unpack(data)
     if not ignore_hmac:
-        message_to_hmac = cryptext
-        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=message_to_hmac, digestmod=Crypto.Hash.SHA256)
+        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=hmac_d_data, digestmod=Crypto.Hash.SHA256)
         got_hmac = verifier.digest()
         if len(got_hmac) != len(expected_hmac):
             raise ValueError("Got unexpected HMAC length (expected %d bytes, got %d bytes)" % (len(expected_hmac), len(got_hmac)))
-        if verifier.digest() != expected_hmac:
+        if got_hmac != expected_hmac:
             raise ValueError("HMAC did not match for opdata1 record")
     decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
     decrypted = decryptor.decrypt(cryptext)
