@@ -4,10 +4,10 @@ import struct
 import Crypto.Cipher.AES
 import Crypto.Hash.HMAC
 import Crypto.Hash.MD5
+import Crypto.Hash.SHA
 import Crypto.Hash.SHA256
 import Crypto.Hash.SHA512
 import Crypto.Protocol.KDF
-import pbkdf2
 
 from . import padding
 from . import pbkdf1
@@ -48,9 +48,10 @@ def a_decrypt_key(key_obj, password, aes_size=A_AES_SIZE):
         salt = data[len(SALT_MARKER):len(SALT_MARKER) + SALT_SIZE]
         data = data[len(SALT_MARKER) + SALT_SIZE:]
     iterations = max(int(key_obj.get('iterations', DEFAULT_PBKDF_ITERATIONS)), MINIMUM_PBKDF_ITERATIONS)
-    pb_gen = pbkdf2.PBKDF2(password, salt, iterations)
-    key = pb_gen.read(key_size)
-    iv = pb_gen.read(key_size)
+    prf = lambda p,s: Crypto.Hash.HMAC.new(p, s, digestmod=Crypto.Hash.SHA).digest()
+    keys = Crypto.Protocol.KDF.PBKDF2(password=password, salt=salt, dkLen=2*key_size, count=iterations, prf=prf)
+    key = keys[:key_size]
+    iv = keys[key_size:]
     aes_er = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
     potential_key = padding.pkcs5_unpad(aes_er.decrypt(data))
     validation = base64.b64decode(key_obj['validation'])

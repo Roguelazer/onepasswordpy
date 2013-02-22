@@ -15,7 +15,6 @@ This project depends on the following upstream libraries:
 
 * simplejson
 * pycrypto
-* pbkdf2
 
 This is a human-readable denormalized list; for the actual list, look at `setup.py`.
 
