@@ -8,7 +8,8 @@ from . import crypt_util
 from . import padding
 from .item import Item
 
-EXPECTED_VERSION = 30645
+EXPECTED_VERSION_MIN = 30000
+EXPECTED_VERSION_MAX = 40000
 
 
 class AbstractKeychain(object):
@@ -48,8 +49,9 @@ class AKeychain(AbstractKeychain):
         version_file = os.path.join(self.base_path, 'config', 'buildnum')
         with open(version_file, 'r') as f:
             version_num = int(f.read().strip())
-        if version_num != EXPECTED_VERSION:
-            raise ValueError("I only understand 1Password build %s" % EXPECTED_VERSION)
+        if version_num < EXPECTED_VERSION_MIN or version_num > EXPECTED_VERSION_MAX:
+            print version_num
+            raise ValueError("I only understand 1Password builds in [%s,%s]" % (EXPECTED_VERSION_MIN, EXPECTED_VERSION_MAX))
 
     def unlock(self, password):
         keys = self._load_keys(password)
