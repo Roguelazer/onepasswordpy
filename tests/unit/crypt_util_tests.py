@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import struct
 
+import simplejson
 import testify as T
 
 from onepassword import crypt_util
@@ -70,18 +71,44 @@ class OPData1UnpackTestCase(T.TestCase):
 
 
 class OPdata1DecryptTestCase(T.TestCase):
+    """test specific data from the example keychain provided by AgileBits"""
+
+    PASSPHRASE = "fred"
+    SALT = "LlfotX7aTZnfL+AjJJYARA=="
+    ITERATIONS = 227272
+    DERIVED_KEY = '`\x8c\x9f\x19<p\xd5U\xec!Sx\xd6\xe8\x9b\xaf\xbc&:\x8f\x82T\xff\xfbZ\xae{LAf\xaaI'
+    DERIVED_HMAC = '\xb9\xeaO\xdc\xeb\x8e<\xee68\xa8\xc0\x9b\xe1\xbdV\xf94\xf5g\x165\xca\x1a\n\x98Hl\x8bT2"'
+    OVERVIEW_KEY = '\x12*D\x01\xaeL\x16\x80\x91(\xbd\xc5$\xbc\x04\xc6\xd6\xd2\xccrx\x84\xdb\x83`+\xb6\xcc\xbb=\xb9 '
+    OVERVIEW_HMAC = '\xee\xa8[K\xfe9\x1c`\xc4\x1e}\xb2\xd7\xd7\xa8\x91|\x9d\xdf~\x14c\tJC]h\xd5\x1a\xa3\xcf\x0b'
+
+    def test_key_derivation(self):
+        # TODO: make a test that doesn't take 9 seconds for this
+        key, hmac = crypt_util.opdata1_derive_keys(password=self.PASSPHRASE, salt=base64.b64decode(self.SALT), iterations=self.ITERATIONS)
+        T.assert_equal(key, self.DERIVED_KEY)
+        T.assert_equal(hmac, self.DERIVED_HMAC)
+
     def test_master_key_decryption(self):
-        key = '`\x8c\x9f\x19<p\xd5U\xec!Sx\xd6\xe8\x9b\xaf\xbc&:\x8f\x82T\xff\xfbZ\xae{LAf\xaaI'
-        hmac_key = '\xb9\xeaO\xdc\xeb\x8e<\xee68\xa8\xc0\x9b\xe1\xbdV\xf94\xf5g\x165\xca\x1a\n\x98Hl\x8bT2"'
         data = "b3BkYXRhMDEAAQAAAAAAAIgdZa9rhj9meNSE/1UbyEOpX68om5FOVwoZkzU3ibZqnGvUC0LFiJI+iGmGIznQbvPVwJHAupl6cEYZs//BIbSxJgcengoIEvci+Vote4DCK8kfwjfLPfq6G+4cnTy0yUMyM1qyA7sPB8p3TBlynOgYL5HNIorhj7grF1NeyuAS8UkEpqzpDZurHZNOuVfqmKaLSy2zyOAtJ/ev+SA829kcK3xqqm+cLKPB1fl2/J7Ya4AIKuPjnC8wo10mwsFNvWQ4a+m1rkCFGCTcWWO1RwO6F9ILQk3qqkUnk6HvhBjbLdpmmwZAdeRQQEpGQz9lM9/goTs0+h9VI4/+pQYqTyLoIbnpljnJ0OziffZcrwqqrXIAsBh+ezE0EH44WC73O2/eEARBA5JNgnW/m/rcmFQK5hxeWb4GxbypgUYDRb0p"
-        print repr(crypt_util.opdata1_decrypt_master_key(data, key, hmac_key), ignore_hmac=True)
+        crypt_util.opdata1_decrypt_master_key(data, self.DERIVED_KEY, self.DERIVED_HMAC)
+
+    def test_overview_key_decryption(self):
+        data = "b3BkYXRhMDFAAAAAAAAAAMggp7KPfHsgxuBvQ1mn3YPVxJ7Sc+gvnTCZXQMop2osF7qQUohQHXRTftuCriAAUYgmK6bytJVdIz5JIXCUZEq6xWFekj5L3Br6MO55+bPz1qei50DwFs27eh0+tjpSGm3dMcCqhMAqMmqkENbur0f5t73xlvAEkPwpZzWcrPKe"
+        key, hmac = crypt_util.opdata1_decrypt_master_key(data, self.DERIVED_KEY, self.DERIVED_HMAC)
+        T.assert_equal(key, self.OVERVIEW_KEY)
+        T.assert_equal(hmac, self.OVERVIEW_HMAC)
 
     def test_item_key_decryption(self):
-        key = '`\x8c\x9f\x19<p\xd5U\xec!Sx\xd6\xe8\x9b\xaf\xbc&:\x8f\x82T\xff\xfbZ\xae{LAf\xaaI'
-        hmac_key = '\xb9\xeaO\xdc\xeb\x8e<\xee68\xa8\xc0\x9b\xe1\xbdV\xf94\xf5g\x165\xca\x1a\n\x98Hl\x8bT2"'
+        key = '\x8c\r\x8d\xb6p\xb0\xb7\xd5l\xb1\x1aF5w\xe1A\x03W4@\x80\xb9\xae\xec!Q\x19\x1c\xf3\xde\xc5\x9d'
+        hmac_key = '\xc9S\x10w\xbf|g\xb3\x1aI\xa7\x13\x93\xcf\xd6v_,\x9a\xd8"\xc9\xa8\x8ctX\x1d>k\xe8\xf6V'
         data = "R+JJyjeDfDC49x0XwaW5eJkJhG9COpfzFPSo8P2ZDa6ZYeLRzyjeukgdtDj5Yg7F0l2fMCbHKmOtQUXRQxCfsaCcsTeDR10WGMlzQtJoygmdMreG9joX18JPFWtDo/P94sbn8Wd0Q+Sx18Whdo0lRA=="
         data = base64.b64decode(data)
-        print crypt_util.opdata1_decrypt_key(data, key, hmac_key)
+        crypt_util.opdata1_decrypt_key(data, key, hmac_key)
+
+    def test_item_overview_decryption(self):
+        data = "b3BkYXRhMDEuAAAAAAAAACCvfWbzwBJIcF501hFPJGgqwKPA+y333FXC2LG9W+M9GGIyd9wBW6DToRRV5964EkpEs4zlwz5FHNt25FfGuC2TPYnVl+zKLH0GFPXVvFYz3XP5COQ3fHhX2SmeHHsviw=="
+        expected_data = {"title":"Personal","ainfo":"Wendy Appleseed"}
+        data = simplejson.loads(crypt_util.opdata1_decrypt_item(data, self.OVERVIEW_KEY, self.OVERVIEW_HMAC))
+        T.assert_equal(data, expected_data)
 
 
 if __name__ == '__main__':

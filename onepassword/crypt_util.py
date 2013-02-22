@@ -118,7 +118,7 @@ def opdata1_decrypt_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=Fa
 def opdata1_decrypt_master_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
     key_size = KEY_SIZE[aes_size]
     bare_key = opdata1_decrypt_item(data, key, hmac_key, aes_size=aes_size, ignore_hmac=ignore_hmac)
-    hashed_key = Crypto.Hash.SHA512(bare_key).digest()
+    hashed_key = Crypto.Hash.SHA512.new(bare_key).digest()
     return hashed_key[:key_size], hashed_key[key_size:]
 
 
@@ -127,10 +127,14 @@ def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=F
     assert len(key) == key_size
     assert len(data) >= OPDATA1_MINIMUM_SIZE
     plaintext_length, iv, cryptext, expected_hmac = opdata1_unpack(data)
-    message_to_hmac = cryptext
-    verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=message_to_hmac, digestmod=Crypto.Hash.SHA256)
-    if not ignore_hmac and verifier.digest() != expected_hmac:
-        raise ValueError("HMAC did not match for opdata1 record")
+    if not ignore_hmac:
+        message_to_hmac = cryptext
+        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=message_to_hmac, digestmod=Crypto.Hash.SHA256)
+        got_hmac = verifier.digest()
+        if len(got_hmac) != len(expected_hmac):
+            raise ValueError("Got unexpected HMAC length (expected %d bytes, got %d bytes)" % (len(expected_hmac), len(got_hmac)))
+        if verifier.digest() != expected_hmac:
+            raise ValueError("HMAC did not match for opdata1 record")
     decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
     decrypted = decryptor.decrypt(cryptext)
     unpadded = padding.ab_unpad(decrypted, plaintext_length)
