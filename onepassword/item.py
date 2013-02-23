@@ -22,4 +22,8 @@ class AItem(object):
             identifier = self.keychain.levels[data['securityLevel']]
         else:
             raise KeyError("Neither keyID or securityLevel present in %s" % self.uuid)
+        self.key_identifier = identifier
         self._decrypted = self.keychain.decrypt(identifier, data['encrypted'])
+
+    def __repr__(self):
+        return '%s<uuid=%s, keyid=%s>' % (self.__class__.__name__, self.uuid, self.key_identifier)

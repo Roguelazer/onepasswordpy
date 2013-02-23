@@ -1,4 +1,4 @@
-import random
+from . import random_util
 
 def pkcs5_pad(string, block_size=16):
     """PKCS#5 pad the given string to the given block size
@@ -21,20 +21,16 @@ def pkcs5_unpad(string):
     return string[:-amount_of_padding]
 
 
-def random_byte():
-    return random.randint(0, 255)
-
-
-def ab_pad(string, block_size=16, random_generator=random_byte):
+def ab_pad(string, block_size=16, random_generator=random_util.sort_of_random_bytes):
     """AgileBits custom pad a string to the given block size
 
     Arguments:
         string - The string to pad
         block_size - Block size in bytes
-        random_generator - A function that returns a random byte
+        random_generator - A function that returns random bytes
     """
     bytes_to_pad = block_size - (len(string) % block_size)
-    padding = ''.join([chr(random_generator()) for _ in range(bytes_to_pad)])
+    padding = random_generator(bytes_to_pad)
     return padding + string
 
 

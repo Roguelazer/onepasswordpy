@@ -28,9 +28,12 @@ class TestABPaddingTestCase(T.TestCase):
         ("\x01\x02", 10, "\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02"),
     )
 
+    def zeros(self, count):
+        return ''.join([chr(0) for x in range(count)])
+
     def test_pad(self):
         for unpadded, bs, padded in self.VECTORS:
-            T.assert_equal(padding.ab_pad(unpadded, bs, random_generator=(lambda: 0)), padded)
+            T.assert_equal(padding.ab_pad(unpadded, bs, random_generator=self.zeros), padded)
 
     def test_unpad(self):
         for unpadded, _, padded in self.VECTORS:
