@@ -4,13 +4,12 @@ import struct
 import Crypto.Cipher.AES
 import Crypto.Hash.HMAC
 import Crypto.Hash.MD5
-import Crypto.Hash.SHA
 import Crypto.Hash.SHA256
 import Crypto.Hash.SHA512
-import Crypto.Protocol.KDF
 
 from . import padding
 from . import pbkdf1
+from . import pbkdf2
 
 
 # 8 bytes for "opdata1"
@@ -48,8 +47,7 @@ def a_decrypt_key(key_obj, password, aes_size=A_AES_SIZE):
         salt = data[len(SALT_MARKER):len(SALT_MARKER) + SALT_SIZE]
         data = data[len(SALT_MARKER) + SALT_SIZE:]
     iterations = max(int(key_obj.get('iterations', DEFAULT_PBKDF_ITERATIONS)), MINIMUM_PBKDF_ITERATIONS)
-    prf = lambda p,s: Crypto.Hash.HMAC.new(p, s, digestmod=Crypto.Hash.SHA).digest()
-    keys = Crypto.Protocol.KDF.PBKDF2(password=password, salt=salt, dkLen=2*key_size, count=iterations, prf=prf)
+    keys = pbkdf2.pbkdf2_sha1(password=password, salt=salt, length=2*key_size, iterations=iterations)
     key = keys[:key_size]
     iv = keys[key_size:]
     aes_er = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
@@ -152,8 +150,7 @@ def opdata1_derive_keys(password, salt, iterations=1000, aes_size=C_AES_SIZE):
     # TODO: is this necessary? does the hmac on ios actually include the
     # trailing nul byte?
     password += "\x00"
-    prf = lambda p,s: Crypto.Hash.HMAC.new(p, s, digestmod=Crypto.Hash.SHA512).digest()
-    keys = Crypto.Protocol.KDF.PBKDF2(password=password, salt=salt, dkLen=2*key_size, count=iterations, prf=prf)
+    keys = pbkdf2.pbkdf2_sha512(password=password, salt=salt, length=2*key_size, iterations=iterations)
     key1 = keys[:key_size]
     key2 = keys[key_size:]
     return key1, key2
