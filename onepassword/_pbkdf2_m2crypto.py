@@ -3,15 +3,16 @@ import struct
 from Crypto.Util.strxor import strxor
 import M2Crypto.EVP
 
+
 def pbkdf2_sha1(password, salt, length, iterations):
     return M2Crypto.EVP.pbkdf2(password=password, salt=salt, iter=iterations, keylen=length)
 
 
 def pbkdf2_sha512(password, salt, length, iterations):
     hmac = M2Crypto.EVP.HMAC(key=password, algo='sha512')
-    hmac.update(salt)
     generated_data = 0
     generated_chunks = []
+    # cache the thing we're iterating over
     iterator = range(iterations - 1)
     i = 1
     while generated_data < length:
@@ -22,8 +23,8 @@ def pbkdf2_sha512(password, salt, length, iterations):
         for j in iterator:
             hmac.reset(key=password)
             hmac.update(U_1)
-            U_1 = t = hmac.final()
-            U = strxor(U, t)
+            U_1 = hmac.final()
+            U = strxor(U, U_1)
         generated_chunks.append(U)
         generated_data += len(U)
         i += 1
