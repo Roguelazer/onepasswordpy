@@ -18,6 +18,10 @@ This project depends on the following upstream libraries:
 
 This is a human-readable denormalized list; for the actual list, look at `setup.py`.
 
+If you have [M2Crypto](http://chandlerproject.org/Projects/MeTooCrypto)
+installed key derivation (and thus keychain unlocking) will be approximately
+five times faster. The PyCrypto fallback is totally functional, though.
+
 Unit tests are written using Yelp's
 [testify](https://github.com/Yelp/testify) framework; you should install it
 (with yum, apt-get, pip, or whatever else suits your fancy) and run `testify
