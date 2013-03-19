@@ -3,13 +3,11 @@ import struct
 
 import Crypto.Cipher.AES
 import Crypto.Hash.HMAC
-import Crypto.Hash.MD5
-import Crypto.Hash.SHA256
-import Crypto.Hash.SHA512
 
 from . import padding
 from . import pbkdf1
 from . import pbkdf2
+from .hashes import MD5, SHA256, SHA512
 
 
 # 8 bytes for "opdata1"
@@ -81,7 +79,7 @@ def a_decrypt_item(data, key, aes_size=A_AES_SIZE):
         nkey = pb_gen.read(key_size)
         iv = pb_gen.read(key_size)
     else:
-        nkey = Crypto.Hash.MD5.new(key).digest()
+        nkey = MD5.new(key).digest()
         iv = '\x00'*key_size
     aes_er = Crypto.Cipher.AES.new(nkey, Crypto.Cipher.AES.MODE_CBC, iv)
     return padding.pkcs5_unpad(aes_er.decrypt(data))
@@ -107,7 +105,7 @@ def opdata1_decrypt_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=Fa
     key_size = KEY_SIZE[aes_size]
     iv, cryptext, expected_hmac = struct.unpack("=16s64s32s", data)
     if not ignore_hmac:
-        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=(iv + cryptext), digestmod=Crypto.Hash.SHA256)
+        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=(iv + cryptext), digestmod=SHA256)
         if verifier.digest() != expected_hmac:
             raise ValueError("HMAC did not match for opdata1 key")
     decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
@@ -121,7 +119,7 @@ def opdata1_decrypt_master_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_
     bare_key = opdata1_decrypt_item(data, key, hmac_key, aes_size=aes_size, ignore_hmac=ignore_hmac)
     # XXX: got the following step from jeff@agilebits (as opposed to the
     # docs anywhere)
-    hashed_key = Crypto.Hash.SHA512.new(bare_key).digest()
+    hashed_key = SHA512.new(bare_key).digest()
     return hashed_key[:key_size], hashed_key[key_size:]
 
 
@@ -131,7 +129,7 @@ def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=F
     assert len(data) >= OPDATA1_MINIMUM_SIZE
     plaintext_length, iv, cryptext, expected_hmac, hmac_d_data = opdata1_unpack(data)
     if not ignore_hmac:
-        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=hmac_d_data, digestmod=Crypto.Hash.SHA256)
+        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=hmac_d_data, digestmod=SHA256)
         got_hmac = verifier.digest()
         if len(got_hmac) != len(expected_hmac):
             raise ValueError("Got unexpected HMAC length (expected %d bytes, got %d bytes)" % (len(expected_hmac), len(got_hmac)))
