@@ -6,7 +6,7 @@ import Crypto.Hash.HMAC
 
 from . import padding
 from . import pbkdf1
-from . import pbkdf2
+from . import pbkdf2_wrapper as pbkdf2
 from .hashes import MD5, SHA256, SHA512
 
 
