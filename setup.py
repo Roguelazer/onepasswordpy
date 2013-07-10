@@ -6,6 +6,14 @@ except ImportError:
 
 import onepassword
 
+def read_requirements(filename):
+    reqs = []
+    with open(filename, 'r') as f:
+        for line in f:
+            reqs.append(line.strip())
+    return reqs
+
+
 setup(
     name="onepasswordpy",
     version=onepassword.__version__,
@@ -22,14 +30,8 @@ setup(
         "Intended Audience :: Developers",
         "Development Status :: 3 - Alpha",
     ],
-    install_requires=[
-        'simplejson>=2.1.0',
-        'pycrypto>=2.0',
-    ],
-    tests_require=[
-        'testify>=0.3',
-        'mock>=1.0',
-    ],
+    install_requires=read_requirements('requirements.txt'),
+    tests_require=read_requirements('requirements-tests.txt'),
     packages=[
         'onepassword',
     ],
