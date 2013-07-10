@@ -3,6 +3,6 @@ python:
     - "2.6"
     - "2.7"
 install: 
-    - "apt-get install swig libnettle4"
+    - "sudo apt-get install swig libnettle4"
     - "pip install -r requirements.txt -r requirements-tests.txt --use-mirrors"
 script: "testify tests"
