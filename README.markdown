@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Roguelazer/onepasswordpy?branch=master)](https://travis-ci.org/Roguelazer/onepasswordpy)
+
 **onepasswordpy** is a pure-python library for manipulating
 [1Password](https://agilebits.com/onepassword)'s `.agilekeychain` files.
 Right now, it supports decrypting and loading all data types. Creation of
