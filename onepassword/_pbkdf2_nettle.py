@@ -13,7 +13,7 @@ for function in ('nettle_hmac_sha1_update', 'nettle_hmac_sha512_update', 'nettle
 def _pbkdf2(password, salt, length, iterations, hash_size, set_fn, update_fn, digest_fn):
     buf = ctypes.create_string_buffer('', size=max(length, hash_size))
     # TODO: 1024 bytes is almost definitely not the size of this structure
-    shactx = ctypes.create_string_buffer('', size = 1024)
+    shactx = ctypes.create_string_buffer('', size=1024)
     set_fn(ctypes.byref(shactx), len(password), password)
     _nettle.nettle_pbkdf2(
         ctypes.byref(shactx),
