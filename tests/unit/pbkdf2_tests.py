@@ -1,8 +1,5 @@
 import testify as T
 
-from onepassword import _pbkdf2_pycrypto
-from onepassword import _pbkdf2_nettle
-
 
 class PBKDF2SHA1TestCase(T.TestCase):
     VECTORS = (
@@ -14,6 +11,7 @@ class PBKDF2SHA1TestCase(T.TestCase):
     )
 
     def test_vectors_pycrypto(self):
+        from onepassword import _pbkdf2_pycrypto
         for password, salt, iterations, expected_key in self.VECTORS:
             generated = _pbkdf2_pycrypto.pbkdf2_sha1(password, salt, length=16, iterations=iterations)
             T.assert_equal(generated, expected_key)
@@ -25,6 +23,7 @@ class PBKDF2SHA1TestCase(T.TestCase):
             T.assert_equal(generated, expected_key)
 
     def test_vectors_nettle(self):
+        from onepassword import _pbkdf2_nettle
         for password, salt, iterations, expected_key in self.VECTORS:
             generated = _pbkdf2_nettle.pbkdf2_sha1(password, salt, length=16, iterations=iterations)
             T.assert_equal(generated, expected_key)
@@ -40,6 +39,7 @@ class PBKDF2SHA512TestCase(T.TestCase):
     )
 
     def test_vectors_pycrypto(self):
+        from onepassword import _pbkdf2_pycrypto
         for password, salt, iterations, expected_key in self.VECTORS:
             generated = _pbkdf2_pycrypto.pbkdf2_sha512(password, salt, length=16, iterations=iterations)
             T.assert_equal(generated, expected_key)
@@ -51,6 +51,7 @@ class PBKDF2SHA512TestCase(T.TestCase):
             T.assert_equal(generated, expected_key)
 
     def test_vectors_nettle(self):
+        from onepassword import _pbkdf2_nettle
         for password, salt, iterations, expected_key in self.VECTORS:
             generated = _pbkdf2_nettle.pbkdf2_sha512(password, salt, length=16, iterations=iterations)
             T.assert_equal(generated, expected_key)
