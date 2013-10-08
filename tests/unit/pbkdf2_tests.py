@@ -1,5 +1,15 @@
 import testify as T
+from functools import wraps
 
+
+def ignore_import_error(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            f(*args, **kwargs)
+        except ImportError as ex:
+            print 'ignoring ImportError: {0}'.format(ex)
+    return wrapper
 
 class PBKDF2SHA1TestCase(T.TestCase):
     VECTORS = (
@@ -15,13 +25,15 @@ class PBKDF2SHA1TestCase(T.TestCase):
         for password, salt, iterations, expected_key in self.VECTORS:
             generated = _pbkdf2_pycrypto.pbkdf2_sha1(password, salt, length=16, iterations=iterations)
             T.assert_equal(generated, expected_key)
-
+    
+    @ignore_import_error
     def test_vectors_m2crypto(self):
         from onepassword import _pbkdf2_m2crypto
         for password, salt, iterations, expected_key in self.VECTORS:
             generated = _pbkdf2_m2crypto.pbkdf2_sha1(password, salt, length=16, iterations=iterations)
             T.assert_equal(generated, expected_key)
 
+    @ignore_import_error
     def test_vectors_nettle(self):
         from onepassword import _pbkdf2_nettle
         for password, salt, iterations, expected_key in self.VECTORS:
@@ -44,12 +56,14 @@ class PBKDF2SHA512TestCase(T.TestCase):
             generated = _pbkdf2_pycrypto.pbkdf2_sha512(password, salt, length=16, iterations=iterations)
             T.assert_equal(generated, expected_key)
 
+    @ignore_import_error
     def test_vectors_m2crypto(self):
         from onepassword import _pbkdf2_m2crypto
         for password, salt, iterations, expected_key in self.VECTORS:
             generated = _pbkdf2_m2crypto.pbkdf2_sha512(password, salt, length=16, iterations=iterations)
             T.assert_equal(generated, expected_key)
 
+    @ignore_import_error
     def test_vectors_nettle(self):
         from onepassword import _pbkdf2_nettle
         for password, salt, iterations, expected_key in self.VECTORS:
