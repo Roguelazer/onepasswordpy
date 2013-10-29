@@ -1,8 +1,8 @@
-import testify as T
+from unittest2 import TestCase
 
 from onepassword import padding
 
-class PKCS5PaddingTestCase(T.TestCase):
+class PKCS5PaddingTestCase(TestCase):
     """Test our PKCS#5 padding"""
     VECTORS = (
         ("", 1, "\x01"),
@@ -11,15 +11,15 @@ class PKCS5PaddingTestCase(T.TestCase):
     )
     def test_pad(self):
         for unpadded, bs, padded in self.VECTORS:
-            T.assert_equal(padding.pkcs5_pad(unpadded, bs), padded)
+            self.assertEqual(padding.pkcs5_pad(unpadded, bs), padded)
 
     def test_unpad(self):
         for unpadded, _, padded in self.VECTORS:
-            T.assert_equal(padding.pkcs5_unpad(padded), unpadded)
-        T.assert_equal(padding.pkcs5_unpad(""), "")
+            self.assertEqual(padding.pkcs5_unpad(padded), unpadded)
+        self.assertEqual(padding.pkcs5_unpad(""), "")
 
 
-class TestABPaddingTestCase(T.TestCase):
+class TestABPaddingTestCase(TestCase):
     """Test the custom AgileBits padding"""
     VECTORS = (
         ("", 4, "\x00\x00\x00\x00"),
@@ -33,9 +33,9 @@ class TestABPaddingTestCase(T.TestCase):
 
     def test_pad(self):
         for unpadded, bs, padded in self.VECTORS:
-            T.assert_equal(padding.ab_pad(unpadded, bs, random_generator=self.zeros), padded)
+            self.assertEqual(padding.ab_pad(unpadded, bs, random_generator=self.zeros), padded)
 
     def test_unpad(self):
         for unpadded, _, padded in self.VECTORS:
             size = len(unpadded)
-            T.assert_equal(padding.ab_unpad(padded, size), unpadded)
+            self.assertEqual(padding.ab_unpad(padded, size), unpadded)

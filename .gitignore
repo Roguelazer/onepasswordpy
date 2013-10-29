@@ -1,2 +1,7 @@
 *.pyc
 build/
+env/
+env26/
+env27/
+env33/
+*.cprofile
