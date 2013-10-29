@@ -6,6 +6,7 @@ except ImportError:
 
 import onepassword
 
+
 def read_requirements(filename):
     reqs = []
     with open(filename, 'r') as f:
@@ -25,17 +26,22 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.3',
         "Operating System :: OS Independent",
         "License :: OSI Approved :: ISC License (ISCL)",
         "Intended Audience :: Developers",
         "Development Status :: 3 - Alpha",
+        "Topic :: Security",
+        "Topic :: Software Development :: Libraries",
     ],
     install_requires=read_requirements('requirements.txt'),
     tests_require=read_requirements('requirements-tests.txt'),
     packages=[
         'onepassword',
     ],
-    long_description="""onepasswordpy is a simple python library for manipulating datafiles from the
-1Password password management utility (https://agilebits.com/onepassword). It is in no way associated
-with AgileBits, Inc."""
+    long_description="""onepasswordpy is a simple python library for
+manipulating datafiles from the 1Password password management utility
+(https://agilebits.com/onepassword). It is in no way associated with
+AgileBits, Inc."""
 )
