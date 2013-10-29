@@ -71,8 +71,11 @@ def hexize(byte_string):
 
 def unhexize(hex_string):
     res = []
+    if isinstance(hex_string, bytes):
+        hex_string = hex_string.decode('ascii')
     for i in range(int(math.ceil(len(hex_string)/2.0))):
-        res.append(int((hex_string[2*i] + hex_string[2*i+1]), 16))
+        conv = hex_string[2*i] + hex_string[2*i+1]
+        res.append(int(conv, 16))
     return ''.join(chr(i) for i in res)
 
 
