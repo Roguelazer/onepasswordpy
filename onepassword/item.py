@@ -38,6 +38,7 @@ class AItem(object):
             data = simplejson.load(f)
         self.uuid = data['uuid']
         self.data = data
+        self.title = self.data['title']
         if 'keyID' in data:
             identifier = data['keyID']
         elif 'securityLevel' in data:
@@ -45,7 +46,9 @@ class AItem(object):
         else:
             raise KeyError("Neither keyID or securityLevel present in %s" % self.uuid)
         self.key_identifier = identifier
-        self._decrypted = self.keychain.decrypt(identifier, data['encrypted'])
+
+    def decrypt(self):
+        return simplejson.loads(self.keychain.decrypt(self.key_identifier, self.data['encrypted']))
 
     def __repr__(self):
         return '%s<uuid=%s, keyid=%s>' % (self.__class__.__name__, self.uuid, self.key_identifier)
@@ -57,7 +60,8 @@ class CItem(object):
         self.uuid = d['uuid']
         self.category = C_CATEGORIES[d['category']]
         self.updated_at = datetime.datetime.fromtimestamp(d['updated'])
-        self.overview = self.keychain.decrypt_overview(d['o'])
+        self.overview = simplejson.loads(self.keychain.decrypt_overview(d['o']))
+        self.title = self.overview['title']
         self.encrypted_data = d['k'], d['d']
 
     def __repr__(self):
@@ -68,4 +72,4 @@ class CItem(object):
         )
 
     def decrypt(self):
-        return self.keychain.decrypt_data(*self.encrypted_data)
+        return simplejson.loads(self.keychain.decrypt_data(*self.encrypted_data))

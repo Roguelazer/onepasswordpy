@@ -1,14 +1,17 @@
 from unittest2 import TestCase
 
 from onepassword import padding
+import six
+
 
 class PKCS5PaddingTestCase(TestCase):
     """Test our PKCS#5 padding"""
     VECTORS = (
-        ("", 1, "\x01"),
-        ("abcd", 8, "abcd\x04\x04\x04\x04"),
-        ("abcdefg\x00", 16, "abcdefg\x00\x08\x08\x08\x08\x08\x08\x08\x08"),
+        (b"", 1, b"\x01"),
+        (b"abcd", 8, b"abcd\x04\x04\x04\x04"),
+        (b"abcdefg\x00", 16, b"abcdefg\x00\x08\x08\x08\x08\x08\x08\x08\x08"),
     )
+
     def test_pad(self):
         for unpadded, bs, padded in self.VECTORS:
             self.assertEqual(padding.pkcs5_pad(unpadded, bs), padded)
@@ -19,17 +22,17 @@ class PKCS5PaddingTestCase(TestCase):
         self.assertEqual(padding.pkcs5_unpad(""), "")
 
 
-class TestABPaddingTestCase(TestCase):
+class ABPaddingTestCase(TestCase):
     """Test the custom AgileBits padding"""
     VECTORS = (
-        ("", 4, "\x00\x00\x00\x00"),
-        ("ab", 4, "\x00\x00ab"),
-        ("abcd", 4, "\x00\x00\x00\x00abcd"),
-        ("\x01\x02", 10, "\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02"),
+        (b"", 4, b"\x00\x00\x00\x00"),
+        (b"ab", 4, b"\x00\x00ab"),
+        (b"abcd", 4, b"\x00\x00\x00\x00abcd"),
+        (b"\x01\x02", 10, b"\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02"),
     )
 
     def zeros(self, count):
-        return ''.join([chr(0) for x in range(count)])
+        return b''.join([six.int2byte(0) for x in range(count)])
 
     def test_pad(self):
         for unpadded, bs, padded in self.VECTORS:

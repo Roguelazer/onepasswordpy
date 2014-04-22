@@ -30,6 +30,12 @@ class _AbstractKeychain(object):
     def check_version(self):
         pass
 
+    def get_by_uuid(self, uuid):
+        try:
+            return [i for i in self.items if i.uuid == uuid][0]
+        except Exception:
+            raise KeyError(uuid)
+
 
 class AKeychain(_AbstractKeychain):
     """Implementation of the classic .agilekeychain storage format"""
@@ -37,7 +43,6 @@ class AKeychain(_AbstractKeychain):
     def check_paths(self):
         super(AKeychain, self).check_paths()
         files_to_check = {
-            'version file': os.path.join(self.base_path, 'config', 'buildnum'),
             'keys': os.path.join(self.base_path, 'data', 'default', 'encryptionKeys.js')
         }
         for descriptor, expected_path in files_to_check.items():
@@ -47,6 +52,8 @@ class AKeychain(_AbstractKeychain):
     def check_version(self):
         super(AKeychain, self).check_version()
         version_file = os.path.join(self.base_path, 'config', 'buildnum')
+        if not os.path.exists(version_file):
+            return  # AgileBits stopped writing this file in newer versions
         with open(version_file, 'r') as f:
             version_num = int(f.read().strip())
         if version_num < EXPECTED_VERSION_MIN or version_num > EXPECTED_VERSION_MAX:
@@ -81,7 +88,8 @@ class AKeychain(_AbstractKeychain):
     def decrypt(self, keyid, string):
         if keyid not in self.keys:
             raise ValueError("Item encrypted with unknown key %s" % keyid)
-        return crypt_util.a_decrypt_item(padding.pkcs5_pad(string), self.keys[keyid])
+        string = base64.b64decode(string)
+        return crypt_util.a_decrypt_item(string, self.keys[keyid])
 
 
 class CKeychain(_AbstractKeychain):

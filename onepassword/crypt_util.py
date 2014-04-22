@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import base64
 import binascii
 import math
@@ -5,7 +7,6 @@ import struct
 
 import Crypto.Cipher.AES
 import Crypto.Hash.HMAC
-import six
 
 from . import padding
 from . import pbkdf1
@@ -34,7 +35,7 @@ KEY_SIZE = {
 }
 
 SALT_SIZE = 8
-SALT_MARKER = 'Salted__'
+SALT_MARKER = b'Salted__'
 
 
 class BadKeyError(Exception):
@@ -42,9 +43,11 @@ class BadKeyError(Exception):
 
 
 def a_decrypt_key(key_obj, password, aes_size=A_AES_SIZE):
+    if not isinstance(password, bytes):
+        password = password.encode('utf-8')
     key_size = KEY_SIZE[aes_size]
     data = base64.b64decode(key_obj['data'])
-    salt = '\x00'*SALT_SIZE
+    salt = b'\x00'*SALT_SIZE
     if data[:len(SALT_MARKER)] == SALT_MARKER:
         salt = data[len(SALT_MARKER):len(SALT_MARKER) + SALT_SIZE]
         data = data[len(SALT_MARKER) + SALT_SIZE:]
