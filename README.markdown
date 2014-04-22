@@ -33,12 +33,11 @@ These will be imported in that order. If you don't have one of the faster
 options (nettle, M2Crypto), everything will fall back gracefully to PyCrypto
 (which is also used for the speedy symmetric crypto).
 
-Unit tests are written using Yelp's
-[testify](https://github.com/Yelp/testify) framework; you should install it
-(with yum, apt-get, pip, or whatever else suits your fancy) and run `testify
-tests` to run the tests.
+Unit tests are written using `nose` and `unittest`; you should install those
+(with yum, apt-get, pip, or whatever else suits your fancy) and run
+`nosetests tests` to run the tests.
 
-It also probably only runs on Python 2.6 and 2.7.
+This library ought to work with Python 2.6, 2.7, and 3.3.
 
 License
 -------

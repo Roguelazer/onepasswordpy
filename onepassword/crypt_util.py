@@ -1,4 +1,5 @@
 import base64
+import math
 import struct
 
 import Crypto.Cipher.AES
@@ -8,6 +9,7 @@ from . import padding
 from . import pbkdf1
 from . import pbkdf2
 from .hashes import MD5, SHA256, SHA512
+from .util import make_utf8
 
 
 # 8 bytes for "opdata1"
@@ -60,13 +62,20 @@ def a_decrypt_key(key_obj, password, aes_size=A_AES_SIZE):
 def hexize(byte_string):
     res = []
     for c in byte_string:
-        res.append('%02x' % ord(c))
+        if isinstance(c, int):
+            res.append('%02x' % c)
+        else:
+            res.append('%02x' % ord(c))
     return ''.join(res).upper()
+
 
 def unhexize(hex_string):
     res = []
-    for i in range(len(hex_string)/2):
-        res.append(int((hex_string[2*i] + hex_string[2*i+1]), 16))
+    if isinstance(hex_string, bytes):
+        hex_string = hex_string.decode('ascii')
+    for i in range(int(math.ceil(len(hex_string)/2.0))):
+        conv = hex_string[2*i] + hex_string[2*i+1]
+        res.append(int(conv, 16))
     return ''.join(chr(i) for i in res)
 
 
@@ -102,6 +111,7 @@ def opdata1_unpack(data):
 
 def opdata1_decrypt_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=False):
     """Decrypt encrypted item keys"""
+    hmac_key = make_utf8(hmac_key)
     key_size = KEY_SIZE[aes_size]
     iv, cryptext, expected_hmac = struct.unpack("=16s64s32s", data)
     if not ignore_hmac:
@@ -147,7 +157,7 @@ def opdata1_derive_keys(password, salt, iterations=1000, aes_size=C_AES_SIZE):
     password = password.encode('utf-8')
     # TODO: is this necessary? does the hmac on ios actually include the
     # trailing nul byte?
-    password += "\x00"
+    password += b'\x00'
     keys = pbkdf2.pbkdf2_sha512(password=password, salt=salt, length=2*key_size, iterations=iterations)
     key1 = keys[:key_size]
     key2 = keys[key_size:]
