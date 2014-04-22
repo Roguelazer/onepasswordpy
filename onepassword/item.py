@@ -1,4 +1,26 @@
 import simplejson
+import datetime
+
+C_CATEGORIES = {
+    '001': 'Login',
+    '002': 'Credit Card',
+    '003': 'Secure Note',
+    '004': 'Identity',
+    '005': 'Password',
+    '099': 'Tombstone',
+    '100': 'Software License',
+    '101': 'Bank Account',
+    '102': 'Database',
+    '103': 'Driver License',
+    '104': 'Outdoor License',
+    '105': 'Membership',
+    '106': 'Passport',
+    '107': 'Rewards',
+    '108': 'SSN',
+    '109': 'Router',
+    '110': 'Server',
+    '111': 'Email',
+}
 
 
 class AItem(object):
@@ -27,3 +49,23 @@ class AItem(object):
 
     def __repr__(self):
         return '%s<uuid=%s, keyid=%s>' % (self.__class__.__name__, self.uuid, self.key_identifier)
+
+
+class CItem(object):
+    def __init__(self, keychain, d):
+        self.keychain = keychain
+        self.uuid = d['uuid']
+        self.category = C_CATEGORIES[d['category']]
+        self.updated_at = datetime.datetime.fromtimestamp(d['updated'])
+        self.overview = self.keychain.decrypt_overview(d['o'])
+        self.encrypted_data = d['k'], d['d']
+
+    def __repr__(self):
+        return '%s<uuid=%s, cat=%s>' % (
+            self.__class__.__name__,
+            self.uuid,
+            self.category,
+        )
+
+    def decrypt(self):
+        return self.keychain.decrypt_data(*self.encrypted_data)

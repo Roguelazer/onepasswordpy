@@ -162,3 +162,17 @@ def opdata1_derive_keys(password, salt, iterations=1000, aes_size=C_AES_SIZE):
     key1 = keys[:key_size]
     key2 = keys[key_size:]
     return key1, key2
+
+
+def opdata1_verify_overall_hmac(hmac_key, item):
+    verifier = Crypto.Hash.HMAC.new(key=hmac_key, digestmod=SHA256)
+    for key, value in sorted(item.items()):
+        if key == 'hmac':
+            continue
+        value = unicode(value).encode('utf-8')
+        verifier.update(key.encode('utf-8'))
+        verifier.update(value)
+    expected = base64.b64decode(item['hmac'])
+    got = verifier.digest()
+    if got != expected:
+        raise ValueError("HMAC did not match for data dictionary")
