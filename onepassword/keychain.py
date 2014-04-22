@@ -40,7 +40,7 @@ class AKeychain(_AbstractKeychain):
             'version file': os.path.join(self.base_path, 'config', 'buildnum'),
             'keys': os.path.join(self.base_path, 'data', 'default', 'encryptionKeys.js')
         }
-        for descriptor, expected_path in files_to_check.iteritems():
+        for descriptor, expected_path in files_to_check.items():
             if not os.path.exists(expected_path):
                 raise Exception("Missing %s, expected at %s" % (descriptor, expected_path))
 
@@ -50,7 +50,6 @@ class AKeychain(_AbstractKeychain):
         with open(version_file, 'r') as f:
             version_num = int(f.read().strip())
         if version_num < EXPECTED_VERSION_MIN or version_num > EXPECTED_VERSION_MAX:
-            print version_num
             raise ValueError("I only understand 1Password builds in [%s,%s]" % (
                 EXPECTED_VERSION_MIN,
                 EXPECTED_VERSION_MAX
@@ -65,8 +64,8 @@ class AKeychain(_AbstractKeychain):
         keys_file = os.path.join(self.base_path, 'data', 'default', 'encryptionKeys.js')
         with open(keys_file, 'r') as f:
             data = simplejson.load(f)
-        levels = dict((l, v) for (l, v) in data.iteritems() if l != 'list')
-        for level, identifier in levels.iteritems():
+        levels = dict((l, v) for (l, v) in data.items() if l != 'list')
+        for level, identifier in levels.items():
             keys = [k for k in data['list'] if k.get('identifier') == identifier]
             assert len(keys) == 1, "There should be exactly one key for level %s, got %d" % (level, len(keys))
             key = keys[0]
@@ -99,7 +98,7 @@ class CKeychain(_AbstractKeychain):
         files_to_check = {
             'profile': os.path.join(self.base_path, 'default', 'profile.js'),
         }
-        for descriptor, expected_path in files_to_check.iteritems():
+        for descriptor, expected_path in files_to_check.items():
             if not os.path.exists(expected_path):
                 raise Exception("Missing %s, expected at %s" % (descriptor, expected_path))
 
@@ -158,7 +157,7 @@ class CKeychain(_AbstractKeychain):
             self.overview_hmac
         )
 
-    def decrypt_data(self, key_blob, hmac_bmob, data_blob):
+    def decrypt_data(self, key_blob, data_blob):
         key, hmac = crypt_util.opdata1_decrypt_key(
             base64.b64decode(key_blob),
             self.master_key,

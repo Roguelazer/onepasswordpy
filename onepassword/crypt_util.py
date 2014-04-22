@@ -1,9 +1,11 @@
 import base64
+import binascii
 import math
 import struct
 
 import Crypto.Cipher.AES
 import Crypto.Hash.HMAC
+import six
 
 from . import padding
 from . import pbkdf1
@@ -60,16 +62,11 @@ def a_decrypt_key(key_obj, password, aes_size=A_AES_SIZE):
 
 
 def hexize(byte_string):
-    res = []
-    for c in byte_string:
-        if isinstance(c, int):
-            res.append('%02x' % c)
-        else:
-            res.append('%02x' % ord(c))
-    return ''.join(res).upper()
+    return binascii.hexlify(byte_string).upper()
 
 
 def unhexize(hex_string):
+    return binascii.unhexlify(hex_string)
     res = []
     if isinstance(hex_string, bytes):
         hex_string = hex_string.decode('ascii')
@@ -98,9 +95,12 @@ def opdata1_unpack(data):
     HEADER_LENGTH = 8
     TOTAL_HEADER_LENGTH = 32
     HMAC_LENGTH = 32
-    if data[:HEADER_LENGTH] != "opdata01":
-        data = base64.b64decode(data)
-    if data[:HEADER_LENGTH] != "opdata01":
+    if data[:HEADER_LENGTH] != b"opdata01":
+        try:
+            data = base64.b64decode(data)
+        except binascii.Error:
+            raise TypeError("expected opdata1 format message")
+    if data[:HEADER_LENGTH] != b"opdata01":
         raise TypeError("expected opdata1 format message")
     plaintext_length, iv = struct.unpack("<Q16s", data[HEADER_LENGTH:TOTAL_HEADER_LENGTH])
     cryptext = data[TOTAL_HEADER_LENGTH:-HMAC_LENGTH]
@@ -142,7 +142,10 @@ def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=F
         verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=hmac_d_data, digestmod=SHA256)
         got_hmac = verifier.digest()
         if len(got_hmac) != len(expected_hmac):
-            raise ValueError("Got unexpected HMAC length (expected %d bytes, got %d bytes)" % (len(expected_hmac), len(got_hmac)))
+            raise ValueError("Got unexpected HMAC length (expected %d bytes, got %d bytes)" % (
+                len(expected_hmac),
+                len(got_hmac)
+            ))
         if got_hmac != expected_hmac:
             raise ValueError("HMAC did not match for opdata1 record")
     decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
@@ -169,7 +172,10 @@ def opdata1_verify_overall_hmac(hmac_key, item):
     for key, value in sorted(item.items()):
         if key == 'hmac':
             continue
-        value = unicode(value).encode('utf-8')
+        if isinstance(value, bool):
+            value = str(int(value)).encode('utf-8')
+        else:
+            value = str(value).encode('utf-8')
         verifier.update(key.encode('utf-8'))
         verifier.update(value)
     expected = base64.b64decode(item['hmac'])
