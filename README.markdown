@@ -37,7 +37,7 @@ Unit tests are written using `nose` and `unittest`; you should install those
 (with yum, apt-get, pip, or whatever else suits your fancy) and run
 `nosetests tests` to run the tests.
 
-This library ought to work with Python 2.6, 2.7, and 3.3.
+This library ought to work with Python 2.6, 2.7, 3.3, and 3.4.
 
 License
 -------
