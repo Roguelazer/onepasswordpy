@@ -30,10 +30,10 @@ class PBKDF2SHA1TestCase(TestCase):
             self.assertEqual(generated, expected_key)
 
     @ignore_import_error
-    def test_vectors_m2crypto(self):
-        from onepassword import _pbkdf2_m2crypto
+    def test_vectors_cryptography(self):
+        from onepassword import _pbkdf2_cryptography
         for password, salt, iterations, expected_key in self.VECTORS:
-            generated = _pbkdf2_m2crypto.pbkdf2_sha1(password, salt, length=16, iterations=iterations)
+            generated = _pbkdf2_cryptography.pbkdf2_sha1(password, salt, length=16, iterations=iterations)
             self.assertEqual(generated, expected_key)
 
     @ignore_import_error
@@ -60,10 +60,10 @@ class PBKDF2SHA512TestCase(TestCase):
             self.assertEqual(generated, expected_key)
 
     @ignore_import_error
-    def test_vectors_m2crypto(self):
-        from onepassword import _pbkdf2_m2crypto
+    def test_vectors_cryptography(self):
+        from onepassword import _pbkdf2_cryptography
         for password, salt, iterations, expected_key in self.VECTORS:
-            generated = _pbkdf2_m2crypto.pbkdf2_sha512(password, salt, length=16, iterations=iterations)
+            generated = _pbkdf2_cryptography.pbkdf2_sha512(password, salt, length=16, iterations=iterations)
             self.assertEqual(generated, expected_key)
 
     @ignore_import_error
