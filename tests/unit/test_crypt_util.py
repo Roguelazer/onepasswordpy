@@ -2,15 +2,14 @@ import base64
 import hashlib
 import hmac
 import struct
-from unittest2 import TestCase
 
 import simplejson
+import pytest
 
 from onepassword import crypt_util
-from ..helpers import assert_raises
 
 
-class HexizeTestCase(TestCase):
+class TestHexize:
     VECTORS = (
         (b'', b''),
         (b'\x00', b'00'),
@@ -18,16 +17,15 @@ class HexizeTestCase(TestCase):
         (b'\x00,123', b'002C313233'),
     )
 
-    def test_hexize_simple(self):
-        for unhexed, hexed in self.VECTORS:
-            self.assertEqual(crypt_util.hexize(unhexed), hexed)
+    @pytest.mark.parametrize('unhexed, hexed', VECTORS)
+    def test_hexize_simple(self, unhexed, hexed):
+        assert crypt_util.hexize(unhexed) == hexed
 
-    def test_unhexize_simple(self):
-        for unhexed, hexed in self.VECTORS:
-            self.assertEqual(crypt_util.unhexize(hexed), unhexed)
+    @pytest.mark.parametrize('unhexed, hexed', VECTORS)
+    def test_unhexize_simple(self, unhexed, hexed):
+        assert crypt_util.unhexize(hexed) == unhexed
 
-
-class OPData1KeyDerivationTestCase(TestCase):
+class TestOPData1KeyDerivation:
     VECTORS = (
         (('', b''), (b'\xcb\x93\tl:\x02\xbe\xeb\x1c_\xac6v\\\x90\x11\xfe\x99\xf8\xd8\xeab6`H\xfc\x98\xcb\x98\xdf\xea\x8f', b'O\x8d0U\xa5\xef\x9bz\xf2\x97s\xad\x82R\x95Ti9\x9d%\xd3\nS1(\x89(X\x1f\xb8n\xcb')),
         (('', b'', 10000), (b'I\xb4\xa7!=\xfc\xeeN\xad\xde\xc1\xe2\x1e\xa6\xfc\x8b\x9a,FZ\xe7\xcdPOA\x1e\xeek!\xd2\xe5\xef', b'v4\x8a\xe1\xa9\xea\xa8\x1bUUm\x13\xa2CM\t\x02,\xc4\x07\xd9\x13bF\xef5(\x05\xf4\xb4\xab\xb5')),
@@ -36,12 +34,12 @@ class OPData1KeyDerivationTestCase(TestCase):
         (('fred', b''), (b'P\x9b\xe2\xb9\xc0C"\xaf\xf2>\xc0zF\xe8\xff\x06j\x88\x91\xe3\t\x82\x96VZ0\x8e\xd6\x11\xcc\xa7\xd4', b'b$\x81(\xd4\xf4\x0e8M\xf0\x0c\x18)!r\xcf\x02>\xf3hK_\x95\xa4\x8c\xa0\x91\x9c\xf97 W')),
     )
 
-    def test_vectors(self):
-        for args, expected in self.VECTORS:
-            self.assertEqual(crypt_util.opdata1_derive_keys(*args), expected)
+    @pytest.mark.parametrize('args, expected', VECTORS)
+    def test_vectors(self, args, expected):
+        assert crypt_util.opdata1_derive_keys(*args) == expected
 
 
-class OPData1UnpackTestCase(TestCase):
+class TestOPData1Unpack:
     def build_opdata1(self):
         header = b"opdata01"
         plaintext = b""
@@ -54,26 +52,26 @@ class OPData1UnpackTestCase(TestCase):
         return header + msg
 
     def test_bad_header_fails(self):
-        with assert_raises(TypeError):
+        with pytest.raises(TypeError):
             crypt_util.opdata1_unpack(b"")
-        with assert_raises(TypeError):
+        with pytest.raises(TypeError):
             crypt_util.opdata1_unpack(b"opdata02abcdef")
 
     def test_basic(self):
         packed = self.build_opdata1()
         plaintext_length, iv, cryptext, expected_hmac, _ = crypt_util.opdata1_unpack(packed)
-        self.assertEqual(plaintext_length, 0)
-        self.assertEqual(cryptext, b"")
+        assert plaintext_length == 0
+        assert cryptext == b""
 
     def test_basic_auto_b64decode(self):
         packed = self.build_opdata1()
         packed = base64.b64encode(packed)
         plaintext_length, iv, cryptext, expected_hmac, _ = crypt_util.opdata1_unpack(packed)
-        self.assertEqual(plaintext_length, 0)
-        self.assertEqual(cryptext, b"")
+        assert plaintext_length == 0
+        assert cryptext == b""
 
 
-class OPdata1DecryptTestCase(TestCase):
+class TestOPdata1Decrypt:
     """test specific data from the example keychain provided by AgileBits"""
 
     DERIVED_KEY = b'`\x8c\x9f\x19<p\xd5U\xec!Sx\xd6\xe8\x9b\xaf\xbc&:\x8f\x82T\xff\xfbZ\xae{LAf\xaaI'
@@ -86,14 +84,14 @@ class OPdata1DecryptTestCase(TestCase):
     def test_master_key_decryption(self):
         data = "b3BkYXRhMDEAAQAAAAAAAIgdZa9rhj9meNSE/1UbyEOpX68om5FOVwoZkzU3ibZqnGvUC0LFiJI+iGmGIznQbvPVwJHAupl6cEYZs//BIbSxJgcengoIEvci+Vote4DCK8kfwjfLPfq6G+4cnTy0yUMyM1qyA7sPB8p3TBlynOgYL5HNIorhj7grF1NeyuAS8UkEpqzpDZurHZNOuVfqmKaLSy2zyOAtJ/ev+SA829kcK3xqqm+cLKPB1fl2/J7Ya4AIKuPjnC8wo10mwsFNvWQ4a+m1rkCFGCTcWWO1RwO6F9ILQk3qqkUnk6HvhBjbLdpmmwZAdeRQQEpGQz9lM9/goTs0+h9VI4/+pQYqTyLoIbnpljnJ0OziffZcrwqqrXIAsBh+ezE0EH44WC73O2/eEARBA5JNgnW/m/rcmFQK5hxeWb4GxbypgUYDRb0p"
         master_key, master_hmac = crypt_util.opdata1_decrypt_master_key(data, self.DERIVED_KEY, self.DERIVED_HMAC)
-        self.assertEqual(master_key, self.MASTER_KEY)
-        self.assertEqual(master_hmac, self.MASTER_HMAC)
+        assert master_key, sel == MASTER_KEY
+        assert master_hmac, sel == MASTER_HMAC
 
     def test_overview_key_decryption(self):
         data = "b3BkYXRhMDFAAAAAAAAAAMggp7KPfHsgxuBvQ1mn3YPVxJ7Sc+gvnTCZXQMop2osF7qQUohQHXRTftuCriAAUYgmK6bytJVdIz5JIXCUZEq6xWFekj5L3Br6MO55+bPz1qei50DwFs27eh0+tjpSGm3dMcCqhMAqMmqkENbur0f5t73xlvAEkPwpZzWcrPKe"
         key, hmac = crypt_util.opdata1_decrypt_master_key(data, self.DERIVED_KEY, self.DERIVED_HMAC)
-        self.assertEqual(key, self.OVERVIEW_KEY)
-        self.assertEqual(hmac, self.OVERVIEW_HMAC)
+        assert key, sel == OVERVIEW_KEY
+        assert hmac, sel == OVERVIEW_HMAC
 
     def test_item_decryption(self):
         source_data = base64.b64decode("R+JJyjeDfDC49x0XwaW5eJkJhG9COpfzFPSo8P2ZDa6ZYeLRzyjeukgdtDj5Yg7F0l2fMCbHKmOtQUXRQxCfsaCcsTeDR10WGMlzQtJoygmdMreG9joX18JPFWtDo/P94sbn8Wd0Q+Sx18Whdo0lRA==")
@@ -101,21 +99,21 @@ class OPdata1DecryptTestCase(TestCase):
         item_key, item_hmac = crypt_util.opdata1_decrypt_key(source_data, self.MASTER_KEY, self.MASTER_HMAC)
         plaintext_item = crypt_util.opdata1_decrypt_item(item_data, item_key, item_hmac)
         item_dict = simplejson.loads(plaintext_item)
-        self.assertIn('sections', item_dict)
-        self.assertEqual(item_dict['sections'][0]['title'], 'set.name')
+        assert 'sections' in item_dict
+        assert item_dict['sections'][0]['title'], 'se == name'
 
     def test_item_overview_decryption(self):
         source_data = "b3BkYXRhMDEuAAAAAAAAACCvfWbzwBJIcF501hFPJGgqwKPA+y333FXC2LG9W+M9GGIyd9wBW6DToRRV5964EkpEs4zlwz5FHNt25FfGuC2TPYnVl+zKLH0GFPXVvFYz3XP5COQ3fHhX2SmeHHsviw=="
         expected_data = {"title":"Personal","ainfo":"Wendy Appleseed"}
         data = simplejson.loads(crypt_util.opdata1_decrypt_item(source_data, self.OVERVIEW_KEY, self.OVERVIEW_HMAC))
-        self.assertEqual(data, expected_data)
+        assert data == expected_data
 
     def test_ignore_hmac(self):
         expected_data = {"title":"Personal","ainfo":"Wendy Appleseed"}
         source_data = base64.b64decode("b3BkYXRhMDEuAAAAAAAAACCvfWbzwBJIcF501hFPJGgqwKPA+y333FXC2LG9W+M9GGIyd9wBW6DToRRV5964EkpEs4zlwz5FHNt25FfGuC2TPYnVl+zKLH0GFPXVvFYz3XP5COQ3fHhX2SmeHHsviw==")
         source_data = source_data[:-2] + b".."
-        with assert_raises(ValueError):
+        with pytest.raises(ValueError):
             decrypted = crypt_util.opdata1_decrypt_item(source_data, self.OVERVIEW_KEY, self.OVERVIEW_HMAC)
         decrypted = crypt_util.opdata1_decrypt_item(source_data, self.OVERVIEW_KEY, self.OVERVIEW_HMAC, ignore_hmac=True)
         data = simplejson.loads(decrypted)
-        self.assertEqual(data, expected_data)
+        assert data == expected_data
