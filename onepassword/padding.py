@@ -1,4 +1,4 @@
-from . import random_util
+import os
 
 import six
 
@@ -24,7 +24,7 @@ def pkcs5_unpad(string):
     return string[:-amount_of_padding]
 
 
-def ab_pad(string, block_size=16, random_generator=random_util.sort_of_random_bytes):
+def ab_pad(string, block_size=16, random_generator=os.urandom):
     """AgileBits custom pad a string to the given block size
 
     Arguments:
