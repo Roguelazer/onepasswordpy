@@ -13,10 +13,10 @@ Please don't sue me!
 
 Dependencies
 ------------
-This project depends on the following upstream libraries:
+This project depends on the following major third-party libraries:
 
 * simplejson
-* pycrypto
+* cryptography
 
 This is a human-readable denormalized list; for the actual list, look at `setup.py`.
 
