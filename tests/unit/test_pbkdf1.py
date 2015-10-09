@@ -1,10 +1,10 @@
 import mock
-from unittest2 import TestCase
+import pytest
 
 from onepassword import pbkdf1
 from onepassword import crypt_util
 
-class PBKDF1TestCase(TestCase):
+class TestPBKDF1:
     # test vectors generated with
     # openssl enc -aes-128-cbc -p -k <PASSWORD> -a -nosalt -p < /dev/null
     VECTORS = (
@@ -14,16 +14,16 @@ class PBKDF1TestCase(TestCase):
         (b'012345678910111231415161717', b'F7560045C70A96DB', b'2E14B2EC7E2F8CDC18F15BB773CCD6F2', b'5C8AADA268F9B86F960DF0464AE5E981'),
     )
 
-    def test_vectors(self):
-        for password, hex_salt, expected_key, expected_iv in self.VECTORS:
-            salt = crypt_util.unhexize(hex_salt)
-            pb_gen = pbkdf1.PBKDF1(password, salt)
-            derived_key = pb_gen.read(16)
-            derived_iv = pb_gen.read(16)
-            hex_derived_key = crypt_util.hexize(derived_key)
-            hex_derived_iv = crypt_util.hexize(derived_iv)
-            self.assertEqual(hex_derived_key, expected_key)
-            self.assertEqual(hex_derived_iv, expected_iv)
+    @pytest.mark.parametrize('password, hex_salt, expected_key, expected_iv', VECTORS)
+    def test_vectors(self, password, hex_salt, expected_key, expected_iv):
+        salt = crypt_util.unhexize(hex_salt)
+        pb_gen = pbkdf1.PBKDF1(password, salt)
+        derived_key = pb_gen.read(16)
+        derived_iv = pb_gen.read(16)
+        hex_derived_key = crypt_util.hexize(derived_key)
+        hex_derived_iv = crypt_util.hexize(derived_iv)
+        assert hex_derived_key == expected_key
+        assert hex_derived_iv == expected_iv
 
     def test_count(self):
         # can't use vectors as easily here because openssl never passes
@@ -38,10 +38,10 @@ class PBKDF1TestCase(TestCase):
         pb_gen = pbkdf1.PBKDF1(key, salt, iterations=4, hash_algo=mock_md5)
         keyish = pb_gen.read(16)
         ivish = pb_gen.read(16)
-        self.assertEqual((keyish, ivish), (sigil[:-16], sigil[-16:]))
-        self.assertEqual(mock_md5.mock_calls, [
+        assert (keyish, ivish) == (sigil[:-16], sigil[-16:])
+        assert mock_md5.mock_calls == [
             mock.call(key+salt),
             mock.call(sigil),
             mock.call(sigil),
             mock.call(sigil),
-        ])
+        ]
