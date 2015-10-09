@@ -23,12 +23,6 @@ class PBKDF2SHA1TestCase(TestCase):
         (b'password', b'salt', 163840, b'\xc2\x03/\xb4\xfe\xf4\xa8n\x15\\\x1a\x93kY\xa9\xda'),
     )
 
-    def test_vectors_pycrypto(self):
-        from onepassword import _pbkdf2_pycrypto
-        for password, salt, iterations, expected_key in self.VECTORS:
-            generated = _pbkdf2_pycrypto.pbkdf2_sha1(password, salt, length=16, iterations=iterations)
-            self.assertEqual(generated, expected_key)
-
     @ignore_import_error
     def test_vectors_cryptography(self):
         from onepassword import _pbkdf2_cryptography
@@ -52,12 +46,6 @@ class PBKDF2SHA512TestCase(TestCase):
         (b'password', b'salt', 16, b'\x884\xdc\xaf\xec\xf51&\xcc\xfeMF\xc6v\x16M'),
         (b'password', b'salt', 163840, b'|\xc2\xa2i\xe7\xa2j\x9e\x8f\xfb\x93\xd7\xb7f\x88\x05'),
     )
-
-    def test_vectors_pycrypto(self):
-        from onepassword import _pbkdf2_pycrypto
-        for password, salt, iterations, expected_key in self.VECTORS:
-            generated = _pbkdf2_pycrypto.pbkdf2_sha512(password, salt, length=16, iterations=iterations)
-            self.assertEqual(generated, expected_key)
 
     @ignore_import_error
     def test_vectors_cryptography(self):

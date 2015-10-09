@@ -5,14 +5,18 @@ import binascii
 import math
 import struct
 
-import Crypto.Cipher.AES
-import Crypto.Hash.HMAC
-
 from . import padding
 from . import pbkdf1
 from . import pbkdf2
-from .hashes import MD5, SHA256, SHA512
 from .util import make_utf8
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.hashes import MD5, SHA256, SHA512, Hash
+from cryptography.hazmat.primitives.hmac import HMAC
+
+_backend = default_backend()
 
 
 # 8 bytes for "opdata1"
@@ -55,8 +59,11 @@ def a_decrypt_key(key_obj, password, aes_size=A_AES_SIZE):
     keys = pbkdf2.pbkdf2_sha1(password=password, salt=salt, length=2*key_size, iterations=iterations)
     key = keys[:key_size]
     iv = keys[key_size:]
-    aes_er = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
-    potential_key = padding.pkcs5_unpad(aes_er.decrypt(data))
+
+    aes = Cipher(algorithms.AES(key), modes.CBC(iv), backend=_backend)
+    decryptor = aes.decryptor()
+    potential_key = padding.pkcs5_unpad(decryptor.update(data) + decryptor.finalize())
+
     validation = base64.b64decode(key_obj['validation'])
     decrypted_validation = a_decrypt_item(validation, potential_key)
     if decrypted_validation != potential_key:
@@ -88,10 +95,14 @@ def a_decrypt_item(data, key, aes_size=A_AES_SIZE):
         nkey = pb_gen.read(key_size)
         iv = pb_gen.read(key_size)
     else:
-        nkey = MD5.new(key).digest()
+        digest = Hash(MD5(), backend=_backend)
+        digest.update(key)
+        nkey = digest.finalize()
         iv = '\x00'*key_size
-    aes_er = Crypto.Cipher.AES.new(nkey, Crypto.Cipher.AES.MODE_CBC, iv)
-    return padding.pkcs5_unpad(aes_er.decrypt(data))
+
+    aes = Cipher(algorithms.AES(nkey), modes.CBC(iv), backend=_backend)
+    decryptor = aes.decryptor()
+    return padding.pkcs5_unpad(decryptor.update(data) + decryptor.finalize())
 
 
 def opdata1_unpack(data):
@@ -118,11 +129,15 @@ def opdata1_decrypt_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=Fa
     key_size = KEY_SIZE[aes_size]
     iv, cryptext, expected_hmac = struct.unpack("=16s64s32s", data)
     if not ignore_hmac:
-        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=(iv + cryptext), digestmod=SHA256)
-        if verifier.digest() != expected_hmac:
+        verifier = HMAC(hmac_key, SHA256(), backend=_backend)
+        verifier.update(iv + cryptext)
+        try:
+            verifier.verify(expected_hmac)
+        except InvalidSignature:
             raise ValueError("HMAC did not match for opdata1 key")
-    decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
-    decrypted = decryptor.decrypt(cryptext)
+    aes = Cipher(algorithms.AES(key), modes.CBC(iv), backend=_backend)
+    decryptor = aes.decryptor()
+    decrypted = decryptor.update(cryptext) + decryptor.finalize()
     crypto_key, mac_key = decrypted[:key_size], decrypted[key_size:]
     return crypto_key, mac_key
 
@@ -132,7 +147,9 @@ def opdata1_decrypt_master_key(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_
     bare_key = opdata1_decrypt_item(data, key, hmac_key, aes_size=aes_size, ignore_hmac=ignore_hmac)
     # XXX: got the following step from jeff@agilebits (as opposed to the
     # docs anywhere)
-    hashed_key = SHA512.new(bare_key).digest()
+    digest = Hash(SHA512(), backend=_backend)
+    digest.update(bare_key)
+    hashed_key = digest.finalize()
     return hashed_key[:key_size], hashed_key[key_size:]
 
 
@@ -142,17 +159,20 @@ def opdata1_decrypt_item(data, key, hmac_key, aes_size=C_AES_SIZE, ignore_hmac=F
     assert len(data) >= OPDATA1_MINIMUM_SIZE
     plaintext_length, iv, cryptext, expected_hmac, hmac_d_data = opdata1_unpack(data)
     if not ignore_hmac:
-        verifier = Crypto.Hash.HMAC.new(key=hmac_key, msg=hmac_d_data, digestmod=SHA256)
-        got_hmac = verifier.digest()
-        if len(got_hmac) != len(expected_hmac):
+        verifier = HMAC(hmac_key, SHA256(), backend=_backend)
+        verifier.update(hmac_d_data)
+        if len(verifier.copy().finalize()) != len(expected_hmac):
             raise ValueError("Got unexpected HMAC length (expected %d bytes, got %d bytes)" % (
                 len(expected_hmac),
                 len(got_hmac)
             ))
-        if got_hmac != expected_hmac:
+        try:
+            verifier.verify(expected_hmac)
+        except InvalidSignature:
             raise ValueError("HMAC did not match for opdata1 record")
-    decryptor = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
-    decrypted = decryptor.decrypt(cryptext)
+    aes = Cipher(algorithms.AES(key), modes.CBC(iv), backend=_backend)
+    decryptor = aes.decryptor()
+    decrypted = decryptor.update(cryptext) + decryptor.finalize()
     unpadded = padding.ab_unpad(decrypted, plaintext_length)
     return unpadded
 
@@ -171,7 +191,7 @@ def opdata1_derive_keys(password, salt, iterations=1000, aes_size=C_AES_SIZE):
 
 
 def opdata1_verify_overall_hmac(hmac_key, item):
-    verifier = Crypto.Hash.HMAC.new(key=hmac_key, digestmod=SHA256)
+    verifier = HMAC(hmac_key, SHA256(), backend=_backend)
     for key, value in sorted(item.items()):
         if key == 'hmac':
             continue
@@ -182,6 +202,7 @@ def opdata1_verify_overall_hmac(hmac_key, item):
         verifier.update(key.encode('utf-8'))
         verifier.update(value)
     expected = base64.b64decode(item['hmac'])
-    got = verifier.digest()
-    if got != expected:
+    try:
+        verifier.verify(expected)
+    except InvalidSignature:
         raise ValueError("HMAC did not match for data dictionary")
