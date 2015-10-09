@@ -24,14 +24,12 @@ There are three different providers for the most expensive crypto operation
 (key derivation via [PBKDF2](http://en.wikipedia.org/wiki/PBKDF2)):
 * [nettle](http://www.lysator.liu.se/~nisse/nettle/) (via `ctypes`):
   finishes test suite in 0.35s
-* openssl (via [M2Crypto](http://chandlerproject.org/Projects/MeTooCrypto)):
-  finishes test suite in 1.85s
-* [PyCrypto](https://www.dlitz.net/software/pycrypto/): finishes test suite
-  in 8.08s
+* [cryptography](https://github.com/pyca/cryptography): finishes test suite
+  in 1.4s
 
-These will be imported in that order. If you don't have one of the faster
-options (nettle, M2Crypto), everything will fall back gracefully to PyCrypto
-(which is also used for the speedy symmetric crypto).
+These will be imported in that order. If you don't have `nettle`, everything
+will fall back gracefully to `cryptography` (which is also used for the speedy
+symmetric crypto).
 
 Unit tests are written using `nose` and `unittest`; you should install those
 (with yum, apt-get, pip, or whatever else suits your fancy) and run

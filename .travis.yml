@@ -9,7 +9,7 @@ before_install:
     - "sudo apt-get update"
     - "sudo apt-get install swig libnettle4"
 install: 
-    - "pip install -r requirements.txt -r requirements-tests.txt --use-mirrors"
-    - "if [[ ${TRAVIS_PYTHON_VERSION::1} != '3' ]]; then pip install -r requirements-tests-py2.txt --use-mirrors; fi"
-    - "if [[ ${TRAVIS_PYTHON_VERSION::1} = '3' ]]; then pip install -r requirements-tests-py3.txt --use-mirrors; fi"
+    - "pip install -r requirements.txt -r requirements-tests.txt"
+    - "if [[ ${TRAVIS_PYTHON_VERSION::1} != '3' ]]; then pip install -r requirements-tests-py2.txt; fi"
+    - "if [[ ${TRAVIS_PYTHON_VERSION::1} = '3' ]]; then pip install -r requirements-tests-py3.txt; fi"
 script: "nosetests -v"
