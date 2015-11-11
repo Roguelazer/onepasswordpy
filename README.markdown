@@ -18,6 +18,12 @@ This project depends on the following major third-party libraries:
 * simplejson
 * cryptography
 
+In addition to that, you also need to have following crypto libs installed on your system:
+
+* On Ubuntu ( openssl-dev , libffi-dev )
+* On RHEL/SuSE ( openssl-devel, libffi48-devel )
+
+
 This is a human-readable denormalized list; for the actual list, look at `setup.py`.
 
 There are three different providers for the most expensive crypto operation
@@ -31,7 +37,7 @@ These will be imported in that order. If you don't have `nettle`, everything
 will fall back gracefully to `cryptography` (which is also used for the speedy
 symmetric crypto).
 
-Unit tests are written using `nose` and `unittest`; you should install those
+Unit tests are written using `nose` and `unittest2`; you should install those
 (with yum, apt-get, pip, or whatever else suits your fancy) and run
 `nosetests tests` to run the tests.
 
